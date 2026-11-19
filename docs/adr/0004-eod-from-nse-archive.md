@@ -18,5 +18,7 @@ Use the NSE archive: one bhavcopy, one index-close file per trading day, constit
 ## Consequences
 - End-of-day only. The Markets page says "NSE close · <date>" so nobody mistakes it for live data.
 - No market cap in the files, so sector moves are equal-weighted (labelled as such).
-- Bhavcopy prices are **not adjusted** for splits and bonuses. Day change is correct (NSE adjusts the previous close), but moving averages and 52-week ranges for a stock that just split are wrong until enough new history accumulates. Fix: a corporate-actions table, or Kite historical candles once paid.
+- Bhavcopy prices are **not adjusted** for splits and bonuses, and neither is the previous close.
+  > **Correction (Phase 4):** an earlier version of this ADR claimed NSE adjusts the previous close on an ex-date, so day change would stay correct. Real data disproved it: CONCORDBIO's 1:1 bonus on 4 Nov 2026 appeared as a −46.6% day. Adjustment is now handled explicitly; see ADR 6.
+- NSE occasionally trades on a weekend (Diwali Muhurat sessions). The importer asks about every calendar day; a 404 is recorded as "no session".
 - Moving to Kite's ₹500 plan later adds intraday ticks; the stored EOD history stays useful for screeners and backtests.

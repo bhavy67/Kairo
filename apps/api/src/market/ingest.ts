@@ -1,10 +1,11 @@
-import { parseBhavcopy, parseConstituents, parseIndexClose, type DailyBar, type IndexBar } from "@kairo/core";
+import { actionRatio, parseBhavcopy, parseConstituents, parseCorporateActions, parseIndexClose, type DailyBar, type IndexBar } from "@kairo/core";
 import type { FastifyBaseLogger } from "fastify";
 import type { Db } from "../db/db.js";
 import { addDays, EOD_READY_MINUTES, istDate, istMinutes, isWeekend } from "./calendar.js";
 import type { NseArchive } from "./nse-archive.js";
 
 export const SOURCE = "nse_eod";
+export const CA_SOURCE = "nse_ca";
 
 export type DayResult = { date: string; status: "ok" | "skipped" | "failed" | "pending"; rows: number; error?: string };
 
@@ -41,13 +42,60 @@ async function upsertIndexBars(db: Db, bars: IndexBar[]): Promise<void> {
   );
 }
 
-async function recordRun(db: Db, date: string, status: "ok" | "skipped" | "failed", rows: number, error?: string) {
+async function recordRun(db: Db, date: string, status: "ok" | "skipped" | "failed", rows: number, error?: string, source = SOURCE) {
   await db.query(
     `insert into ingest_runs (source, date, status, rows, error, finished_at) values ($1, $2, $3, $4, $5, now())
      on conflict (source, date) do update set status = excluded.status, rows = excluded.rows,
        error = excluded.error, finished_at = excluded.finished_at`,
-    [SOURCE, date, status, rows, error ?? null],
+    [source, date, status, rows, error ?? null],
   );
+}
+
+/**
+ * Re-derive every stored ratio from its raw purpose with the current parser.
+ * A few hundred rows a year, so it simply runs on every job. Returns how many changed;
+ * any change makes stored indicators stale, which the caller handles.
+ */
+export async function reparseCorporateActions(db: Db): Promise<number> {
+  const rows = await db.query<{ symbol: string; ex_date: string; purpose: string; ratio: number | null }>(
+    "select symbol, ex_date::text as ex_date, purpose, ratio from corporate_actions",
+  );
+  const changed = rows.filter((r) => actionRatio(r.purpose) !== r.ratio);
+  if (changed.length === 0) return 0;
+  await db.query(
+    `update corporate_actions c set ratio = u.ratio
+     from unnest($1::text[], $2::date[], $3::float8[]) as u(symbol, ex_date, ratio)
+     where c.symbol = u.symbol and c.ex_date = u.ex_date`,
+    [changed.map((r) => r.symbol), changed.map((r) => r.ex_date), changed.map((r) => actionRatio(r.purpose))],
+  );
+  return changed.length;
+}
+
+/**
+ * Corporate actions for a day that has bars. Separate source in ingest_runs so
+ * it can be backfilled for history imported before adjustment existed.
+ */
+export async function ingestCorporateActions(db: Db, nse: NseArchive, date: string): Promise<DayResult> {
+  try {
+    const csv = await nse.corporateActions(date);
+    const actions = csv ? parseCorporateActions(csv) : [];
+    await db.tx(async (tx) => {
+      if (actions.length) {
+        await tx.query(
+          `insert into corporate_actions (symbol, ex_date, purpose, ratio)
+           select * from unnest($1::text[], $2::date[], $3::text[], $4::float8[])
+           on conflict (symbol, ex_date) do update set purpose = excluded.purpose, ratio = excluded.ratio`,
+          [actions.map((a) => a.symbol), actions.map((a) => a.exDate), actions.map((a) => a.purpose), actions.map((a) => a.ratio)],
+        );
+      }
+      await recordRun(tx, date, csv === null ? "skipped" : "ok", actions.length, csv === null ? "no PR file" : undefined, CA_SOURCE);
+    });
+    return { date, status: csv === null ? "skipped" : "ok", rows: actions.length };
+  } catch (err) {
+    const error = (err as Error).message;
+    await recordRun(db, date, "failed", 0, error, CA_SOURCE);
+    return { date, status: "failed", rows: 0, error };
+  }
 }
 
 /**
@@ -56,16 +104,14 @@ async function recordRun(db: Db, date: string, status: "ok" | "skipped" | "faile
  * (Recording it would mark a normal trading day as a holiday forever.)
  */
 export async function ingestDay(db: Db, nse: NseArchive, date: string, now: number = Date.now()): Promise<DayResult> {
-  if (isWeekend(date)) {
-    await recordRun(db, date, "skipped", 0, "weekend");
-    return { date, status: "skipped", rows: 0 };
-  }
+  // Weekends are fetched too: NSE holds occasional special sessions (Diwali Muhurat
+  // trading falls on a weekend some years). A 404 is cheap and recorded once.
   try {
     const [bhav, indices] = await Promise.all([nse.bhavcopy(date), nse.indexClose(date)]);
     if (!bhav) {
       const isToday = date >= istDate(now);
       if (isToday) return { date, status: "pending", rows: 0 };
-      await recordRun(db, date, "skipped", 0, "no bhavcopy (holiday)");
+      await recordRun(db, date, "skipped", 0, isWeekend(date) ? "no session" : "no bhavcopy (holiday)");
       return { date, status: "skipped", rows: 0 };
     }
     const bars = parseBhavcopy(bhav);
@@ -105,12 +151,12 @@ export async function refreshConstituents(db: Db, nse: NseArchive): Promise<numb
 }
 
 /** Dates in [from, to] (inclusive) with no ok/skipped run, newest first. */
-async function missingDates(db: Db, from: string, to: string): Promise<string[]> {
+async function missingDates(db: Db, from: string, to: string, source = SOURCE): Promise<string[]> {
   const done = new Set(
     (
       await db.query<{ date: string }>(
         `select date::text as date from ingest_runs where source = $1 and status in ('ok', 'skipped') and date between $2 and $3`,
-        [SOURCE, from, to],
+        [source, from, to],
       )
     ).map((r) => r.date),
   );
@@ -140,18 +186,40 @@ export async function backfill(db: Db, nse: NseArchive, { days, limit = Infinity
   const results: DayResult[] = [];
   let attempts = 0;
   for (const date of dates) {
-    if (!isWeekend(date) && attempts++ >= limit) break;
+    if (attempts++ >= limit) break;
     const r = await ingestDay(db, nse, date, now);
     results.push(r);
     if (r.status === "failed") log?.warn({ date, error: r.error }, "eod ingest failed");
     else if (r.status === "ok") log?.info({ date, rows: r.rows }, "eod ingested");
-    if (!isWeekend(date) && delayMs > 0) await new Promise((res) => setTimeout(res, delayMs));
+    if (delayMs > 0) await new Promise((res) => setTimeout(res, delayMs));
+  }
+
+  // Corporate actions for trading days that have bars but no CA run yet (also heals old history).
+  const caBudget = Math.max(0, limit - attempts);
+  if (caBudget > 0) {
+    const tradingDays = new Set(
+      (
+        await db.query<{ date: string }>(
+          `select date::text as date from ingest_runs where source = $1 and status = 'ok' and date between $2 and $3`,
+          [SOURCE, addDays(to, -(days - 1)), to],
+        )
+      ).map((r) => r.date),
+    );
+    const caMissing = (await missingDates(db, addDays(to, -(days - 1)), to, CA_SOURCE)).filter((d) => tradingDays.has(d));
+    for (const date of caMissing.slice(0, caBudget)) {
+      const r = await ingestCorporateActions(db, nse, date);
+      if (r.status === "failed") log?.warn({ date, error: r.error }, "corporate actions failed");
+      results.push({ ...r, date: `${date} (ca)` });
+      if (delayMs > 0) await new Promise((res) => setTimeout(res, delayMs));
+    }
   }
   return results;
 }
 
 export interface EodJobResult {
   constituentsRefreshed: boolean;
+  /** Corporate-action ratios changed by the current parser (indicators were reset). */
+  reparsed: number;
   results: DayResult[];
   /** True when the time budget ran out before every missing day was filled. */
   more: boolean;
@@ -172,6 +240,11 @@ export async function runEodJob(
   const constituentsRefreshed = row?.stale ?? true;
   if (constituentsRefreshed) await refreshConstituents(db, nse);
   const results = await backfill(db, nse, { days, limit, now, delayMs, ...(log ? { log } : {}) });
-  const tradingAttempts = results.filter((r) => !isWeekend(r.date)).length;
-  return { constituentsRefreshed, results, more: tradingAttempts >= limit };
+  const reparsed = await reparseCorporateActions(db);
+  if (reparsed > 0) {
+    // Adjustment changed: every stored indicator row and snapshot may be wrong.
+    await db.query("delete from indicators");
+    await db.query("delete from market_snapshots");
+  }
+  return { constituentsRefreshed, results, reparsed, more: results.length >= limit };
 }

@@ -65,6 +65,10 @@ export interface WatchItem extends Partial<Mover> {
   symbol: string;
   note: string | null;
   addedAt: string;
+  /** Null until the nightly job has computed indicators for the symbol. */
+  rsi14?: number | null;
+  vsSma200?: number | null;
+  ret63d?: number | null;
 }
 
 /** One stock on one day with the rolling context the SQL layer computes. */

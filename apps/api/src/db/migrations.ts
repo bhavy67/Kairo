@@ -107,6 +107,121 @@ const MIGRATIONS: { id: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: 4,
+    name: "indicators, screens and alerts",
+    sql: `
+      -- One row per stock per computed day. Written once by the nightly job;
+      -- the market overview, screens and alerts all read from here.
+      create table indicators (
+        symbol          text not null,
+        date            date not null,
+        close           double precision not null,
+        prev_close      double precision not null,
+        high            double precision not null,
+        low             double precision not null,
+        volume          double precision not null,
+        turnover        double precision not null,
+        change_pct      double precision not null,
+        ret_5d          double precision,
+        ret_21d         double precision,
+        ret_63d         double precision,
+        sma20           double precision,
+        sma50           double precision,
+        sma200          double precision,
+        sma50_prev      double precision,
+        sma200_prev     double precision,
+        n50             integer not null,
+        n200            integer not null,
+        rsi14           double precision,
+        avg_vol20       double precision,
+        avg_turnover20  double precision,
+        hi52            double precision,
+        lo52            double precision,
+        n52             integer not null,
+        primary key (symbol, date)
+      );
+      create index indicators_date_idx on indicators (date);
+
+      create table screens (
+        id         bigserial primary key,
+        name       text not null,
+        rule       jsonb not null,
+        alert      boolean not null default false,
+        created_at timestamptz not null default now()
+      );
+
+      -- Last matches per alerting screen, to report only new entries.
+      create table screen_results (
+        screen_id bigint not null references screens on delete cascade,
+        date      date not null,
+        symbols   text[] not null,
+        primary key (screen_id, date)
+      );
+
+      create table alerts (
+        id         bigserial primary key,
+        symbol     text not null,
+        kind       text not null check (kind in ('price_above', 'price_below', 'move_pct', 'cross_200dma')),
+        threshold  double precision,
+        active     boolean not null default true,
+        created_at timestamptz not null default now()
+      );
+
+      create table alert_events (
+        id           bigserial primary key,
+        alert_id     bigint references alerts on delete cascade,
+        screen_id    bigint references screens on delete cascade,
+        date         date not null,
+        symbol       text not null,
+        message      text not null,
+        delivered_at timestamptz,
+        created_at   timestamptz not null default now(),
+        check (num_nonnulls(alert_id, screen_id) = 1)
+      );
+      -- Re-running a day must not duplicate events (or notifications).
+      create unique index alert_events_once on alert_events (coalesce(alert_id, 0), coalesce(screen_id, 0), date, symbol);
+      create index alert_events_pending on alert_events (created_at) where delivered_at is null;
+    `,
+  },
+  {
+    id: 5,
+    name: "corporate actions and weekend sessions",
+    sql: `
+      -- Bonus, split and consolidation ratios from NSE's PR archive. daily_bars
+      -- stays raw; indicators divide earlier prices by the cumulative ratio.
+      create table corporate_actions (
+        symbol  text not null,
+        ex_date date not null,
+        purpose text not null,
+        ratio   double precision not null check (ratio > 0),
+        primary key (symbol, ex_date)
+      );
+
+      -- Weekends used to be skipped without asking NSE, which missed special
+      -- sessions (e.g. Diwali Muhurat trading on a Sunday). Re-check them once.
+      delete from ingest_runs where error = 'weekend';
+      -- Indicators computed before adjustment existed are stale.
+      delete from indicators;
+      delete from market_snapshots;
+    `,
+  },
+  {
+    id: 6,
+    name: "keep raw corporate actions",
+    sql: `
+      -- Store every action with its raw purpose; ratio is derived (null when the
+      -- action does not change the share count or is not understood) and
+      -- re-derived by the job, so parser fixes apply to history without re-downloading.
+      alter table corporate_actions alter column ratio drop not null;
+      alter table corporate_actions drop constraint corporate_actions_ratio_check;
+      alter table corporate_actions add constraint corporate_actions_ratio_check check (ratio is null or ratio > 0);
+      -- Earlier imports discarded unparsed rows: fetch the PR files once more.
+      delete from ingest_runs where source = 'nse_ca';
+      delete from indicators;
+      delete from market_snapshots;
+    `,
+  },
 ];
 
 export async function migrate(db: Db): Promise<number[]> {

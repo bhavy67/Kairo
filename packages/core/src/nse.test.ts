@@ -37,3 +37,39 @@ describe("parseConstituents", () => {
 it("formats NSE file-name dates", () => {
   expect(nseDateParts("2026-11-08")).toEqual({ ymd: "20261108", dmy: "08112026" });
 });
+
+import { actionRatio, parseCorporateActions } from "./nse.js";
+
+describe("corporate actions", () => {
+  it("derives share ratios from purpose text", () => {
+    expect(actionRatio("BONUS 1:1")).toBe(2);
+    expect(actionRatio("BONUS 1:4")).toBe(1.25);
+    expect(actionRatio("FACE VALUE SPLIT (SUB-DIVISION) - FROM RS 10/- PER SHARE TO RS 2/- PER SHARE")).toBe(5);
+    expect(actionRatio("FACE VALUE SPLIT FROM RE 1 TO RE 0.50")).toBe(2);
+    expect(actionRatio("CONSOLIDATION OF SHARES FROM RS 1 TO RS 10")).toBeCloseTo(0.1);
+    expect(actionRatio("BONUS 2:1 AND FACE VALUE SPLIT FROM RS 10 TO RS 5")).toBe(6);
+    // Real abbreviations seen in NSE's bc files:
+    expect(actionRatio("FV SPLT FRM RS 5 TO RE 1")).toBe(5);
+    expect(actionRatio("FV SPLT FRM RS10 TO RE1")).toBe(10);
+    expect(actionRatio("FVSPLT FRM RS 10 TO RS 2")).toBe(5);
+    expect(actionRatio("DEMERGER")).toBeNull();
+    expect(actionRatio("INTERIM DIVIDEND - RS 5 PER SHARE")).toBeNull();
+    expect(actionRatio("RIGHTS 1:5 @ PREMIUM RS 100")).toBeNull();
+  });
+
+  it("keeps every equity action once per symbol and date, joining same-day purposes", () => {
+    const csv = `SERIES,SYMBOL,SECURITY,RECORD_DT,BC_STRT_DT,BC_END_DT,EX_DT,ND_STRT_DT,ND_END_DT,PURPOSE
+N1,1003SCL31A,Sec Re NCD,2026-11-09,,,2026-11-09,,,INTEREST PAYMENT
+BE,CONCORDBIO,Concord Biotech Limited,2026-11-04,,,2026-11-04,,,BONUS 1:1
+EQ,CONCORDBIO,Concord Biotech Limited,2026-11-04,,,2026-11-04,,,BONUS 1:1
+EQ,ITC,ITC Limited,13-Nov-2026,,,13-Nov-2026,,,INTERIM DIVIDEND - RS 6.50 PER SHARE
+EQ,ABC,ABC Ltd,,,,12-Nov-2026,,,FACE VALUE SPLIT FROM RS 10 TO RS 1
+EQ,ABC,ABC Ltd,,,,12-Nov-2026,,,BONUS 1:1
+`;
+    expect(parseCorporateActions(csv)).toEqual([
+      { symbol: "CONCORDBIO", exDate: "2026-11-04", purpose: "BONUS 1:1", ratio: 2 },
+      { symbol: "ITC", exDate: "2026-11-13", purpose: "INTERIM DIVIDEND - RS 6.50 PER SHARE", ratio: null },
+      { symbol: "ABC", exDate: "2026-11-12", purpose: "FACE VALUE SPLIT FROM RS 10 TO RS 1 / BONUS 1:1", ratio: 20 },
+    ]);
+  });
+});

@@ -2,6 +2,8 @@
 
 Data plan: start on free sources; move to Kite Connect (₹500/month) for live ticks and historical candles once Phase 2 works.
 
+Hosting: Vercel (Mumbai) + Supabase. See [deploy.md](deploy.md).
+
 ## Phase 1: Portfolio (done)
 - [x] Kite OAuth login, single allowed user, daily expiry
 - [x] Holdings, mutual funds, cash, allocation
@@ -17,7 +19,7 @@ Data plan: start on free sources; move to Kite Connect (₹500/month) for live t
 - [x] Sector heatmap, top gainers/losers, volume spikes
 - [x] Sector allocation of holdings
 - [x] Watchlist
-- [ ] Corporate-action adjustment for price history
+- [x] Corporate-action adjustment for price history (Phase 4)
 - [ ] Breadth history chart (A/D line, % above 200-day over time)
 - [ ] Intraday quotes once on the Kite data plan
 
@@ -25,10 +27,15 @@ Data plan: start on free sources; move to Kite Connect (₹500/month) for live t
 - [ ] US/EU/Asia indices, USD/INR, US 10Y, Brent (Finnhub or Twelve Data free tier)
 - [ ] Overnight-cues summary before the Indian open
 
-## Phase 4: Signals and screeners
-- [ ] Indicators computed from stored candles (DMA, RSI, MACD, volume vs average)
-- [ ] User-defined screener rules; "stocks of the day" = your saved screens
-- [ ] Alerts on Telegram/email
+## Phase 4: Signals and screeners (done)
+- [x] Daily indicators: 20/50/200-day averages, RSI 14, 1W/1M/3M returns, volume ratio, 52-week range, crossovers
+- [x] Corporate-action adjustment; weekend special sessions
+- [x] "Stocks of the day": six rule-based presets with reasons
+- [x] Screen builder, saved screens
+- [x] Alerts: price crosses, big moves, 200-day crosses, new screen entrants; Telegram digest
+- [ ] MACD, ATR-based volatility filters
+- [ ] Indicators for holdings outside the Nifty 500
+- [ ] Email channel
 
 ## Phase 5: Orders
 - [ ] VPS with a static IP registered with Zerodha (required for API orders under SEBI's retail algo rules)

@@ -34,6 +34,9 @@ export default function Watchlist() {
     { key: "close", label: "Close", render: (w) => (w.close == null ? "–" : money2(w.close)) },
     { key: "chg", label: "Day", sortValue: (w) => w.changePct ?? 0, render: (w) => (w.changePct == null ? "–" : <Change value={w.changePct} format={(v) => percent(v)} />) },
     { key: "vol", label: "Volume", render: (w) => (w.volume == null ? "–" : big(w.volume)) },
+    { key: "rsi", label: "RSI", sortValue: (w) => w.rsi14 ?? -1, render: (w) => (w.rsi14 == null ? "–" : w.rsi14.toFixed(0)) },
+    { key: "dma", label: "vs 200d", sortValue: (w) => w.vsSma200 ?? -Infinity, render: (w) => (w.vsSma200 == null ? "–" : percent(w.vsSma200)) },
+    { key: "m3", label: "3M", sortValue: (w) => w.ret63d ?? -Infinity, render: (w) => (w.ret63d == null ? "–" : <Change value={w.ret63d} format={(v) => percent(v)} />) },
     { key: "rm", label: "", render: (w) => <button className="btn-quiet" aria-label={`Remove ${w.symbol}`} onClick={() => remove.mutate(w.symbol)}>Remove</button> },
   ];
 

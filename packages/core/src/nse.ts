@@ -125,3 +125,68 @@ export function nseDateParts(iso: string): { ymd: string; dmy: string } {
   const [y, m, d] = iso.split("-");
   return { ymd: `${y}${m}${d}`, dmy: `${d}${m}${y}` };
 }
+
+export interface CorporateAction {
+  symbol: string;
+  exDate: string;
+  purpose: string;
+  /**
+   * Shares after ÷ shares before. Prices before the ex-date are divided by it.
+   * Bonus 1:1 → 2. Split ₹10 → ₹2 → 5. Consolidation ₹1 → ₹10 → 0.1.
+   * Null when the action does not change the share count, or the text is not understood.
+   */
+  ratio: number | null;
+}
+
+const MONTH_NUM: Record<string, string> = {
+  JAN: "01", FEB: "02", MAR: "03", APR: "04", MAY: "05", JUN: "06",
+  JUL: "07", AUG: "08", SEP: "09", OCT: "10", NOV: "11", DEC: "12",
+};
+
+function anyDateToIso(s: string): string | null {
+  const t = s.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const m = /^(\d{2})-([A-Za-z]{3})-(\d{4})$/.exec(t);
+  const mon = m && MONTH_NUM[m[2]!.toUpperCase()];
+  return m && mon ? `${m[3]}-${mon}-${m[1]}` : dmyToIso(t);
+}
+
+/**
+ * Share-count ratio implied by a corporate-action purpose, or null when the
+ * action does not change the share count (dividends, AGMs, interest).
+ * Rights issues are ignored: their price effect depends on the subscription price.
+ */
+export function actionRatio(purpose: string): number | null {
+  const p = purpose.toUpperCase();
+  let ratio = 1;
+  const bonus = /BONUS\s*(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)/.exec(p);
+  if (bonus) ratio *= (Number(bonus[1]) + Number(bonus[2])) / Number(bonus[2]);
+  // NSE abbreviates freely: "FACE VALUE SPLIT … FROM RS 10 TO RS 2", "FV SPLT FRM RS 5 TO RE 1", "FVSPLT FRM RS10 TO RE1".
+  if (/SPLI?T|SUB-?DIVISION|CONSOLIDAT/.test(p)) {
+    const fv = /FRO?M\s*(?:RS|RE|INR|₹)?\.?\s*(\d+(?:\.\d+)?)\D*?TO\s*(?:RS|RE|INR|₹)?\.?\s*(\d+(?:\.\d+)?)/.exec(p);
+    if (fv && Number(fv[2]) > 0) ratio *= Number(fv[1]) / Number(fv[2]);
+  }
+  return ratio === 1 || !Number.isFinite(ratio) || ratio <= 0 ? null : ratio;
+}
+
+/**
+ * Every equity-series action from the PR archive's bc<DDMMYYYY>.csv, one row per
+ * symbol and ex-date (purposes on the same day are joined). Actions the parser
+ * does not understand are kept with ratio null: the raw purpose is stored so a
+ * parser fix can be applied to history without re-downloading anything.
+ */
+export function parseCorporateActions(csv: string): CorporateAction[] {
+  const seen = new Map<string, Set<string>>();
+  for (const r of parseCsvRecords(csv)) {
+    if (!SERIES.has(r.SERIES ?? "") || !r.SYMBOL || !r.PURPOSE) continue;
+    const exDate = anyDateToIso(r.EX_DT ?? "");
+    if (!exDate) continue;
+    const key = `${r.SYMBOL}|${exDate}`;
+    seen.set(key, (seen.get(key) ?? new Set()).add(r.PURPOSE.trim()));
+  }
+  return [...seen].map(([key, purposes]) => {
+    const [symbol, exDate] = key.split("|") as [string, string];
+    const purpose = [...purposes].join(" / ");
+    return { symbol, exDate, purpose, ratio: actionRatio(purpose) };
+  });
+}

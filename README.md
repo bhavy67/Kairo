@@ -4,7 +4,9 @@ A personal market desk for an Indian retail investor: portfolio, markets and sig
 
 *Kairos*: the right moment.
 
-![status](https://img.shields.io/badge/phase-2%20·%20markets-0b0b0b)
+![status](https://img.shields.io/badge/phase-4%20·%20signals-0b0b0b)
+
+Live demo: https://kairo-vert-one.vercel.app (demo portfolio, real NSE end-of-day data)
 
 ## What it does today
 
@@ -12,12 +14,14 @@ A personal market desk for an Indian retail investor: portfolio, markets and sig
 - **Holdings**: equity holdings with average cost, LTP, P&L, day change and weight. Sortable.
 - **Funds**: Coin mutual fund holdings with NAV, P&L and weight.
 - **Markets** (NSE end of day): headline indices with trend, India VIX, breadth across the Nifty 500, sector heatmap, top movers and volume spikes.
-- **Watchlist** of NSE symbols.
+- **Screener**: "stocks of the day" from six rule-based presets (breakouts, momentum, pullbacks, 200-day reclaims, unusual volume, oversold large caps), a rule builder, and saved screens.
+- **Alerts**: price crosses, big moves, 200-day crosses and new screen entrants, evaluated after each NSE close, with an optional Telegram digest.
+- **Watchlist** of NSE symbols with RSI, trend and 3-month return.
 - **Sector allocation** of your equity holdings.
 - **Kite login** with a CSRF-protected OAuth flow, restricted to one Kite account.
 - **Demo mode**: runs with a fake portfolio and no broker account, so anyone can clone and try it.
 
-Global markets, signals and order placement are next. See the [roadmap](docs/roadmap.md).
+Global markets and order placement are next. See the [roadmap](docs/roadmap.md).
 
 ## Quick start (demo mode)
 

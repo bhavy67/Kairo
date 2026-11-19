@@ -1,4 +1,4 @@
-import type { IngestRun, MarketOverview, PortfolioSnapshot, WatchItem } from "@kairo/core";
+import type { AlertKind, IngestRun, MarketOverview, PortfolioSnapshot, ScreenRow, ScreenRule, WatchItem } from "@kairo/core";
 
 export class ApiError extends Error {
   constructor(
@@ -8,6 +8,41 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+const send = <T>(path: string, method: string, body?: unknown) =>
+  getJson<T>(path, {
+    method,
+    ...(body === undefined ? {} : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+  });
+
+export interface PresetResult {
+  id: string;
+  name: string;
+  description: string;
+  rule: ScreenRule;
+  total: number;
+  rows: ScreenRow[];
+}
+export interface SavedScreen {
+  id: number;
+  name: string;
+  rule: ScreenRule;
+  alert: boolean;
+}
+export interface AlertView {
+  id: number;
+  symbol: string;
+  kind: AlertKind;
+  threshold: number | null;
+}
+export interface AlertEvent {
+  id: number;
+  date: string;
+  symbol: string;
+  message: string;
+  source: "alert" | "screen";
+  deliveredAt: string | null;
 }
 
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -38,5 +73,13 @@ export const api = {
       body: JSON.stringify({ symbol }),
     }),
   removeWatch: (symbol: string) => getJson<void>(`/api/watchlist/${encodeURIComponent(symbol)}`, { method: "DELETE" }),
+  today: () => getJson<{ asOf: string | null; presets: PresetResult[] }>("/api/screens/today"),
+  runScreen: (rule: ScreenRule) => send<{ asOf: string | null; rows: ScreenRow[] }>("/api/screens/run", "POST", rule),
+  screens: () => getJson<{ screens: SavedScreen[] }>("/api/screens"),
+  saveScreen: (s: { name: string; rule: ScreenRule; alert: boolean }) => send<{ id: number }>("/api/screens", "POST", s),
+  deleteScreen: (id: number) => send<void>(`/api/screens/${id}`, "DELETE"),
+  alerts: () => getJson<{ alerts: AlertView[]; events: AlertEvent[]; channel: string | null }>("/api/alerts"),
+  addAlert: (a: { symbol: string; kind: AlertKind; threshold: number | null }) => send<{ id: number }>("/api/alerts", "POST", a),
+  deleteAlert: (id: number) => send<void>(`/api/alerts/${id}`, "DELETE"),
   logout: () => fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }),
 };

@@ -2,6 +2,9 @@ import type { FastifyBaseLogger } from "fastify";
 import type { Db } from "../db/db.js";
 import { runEodJob } from "./ingest.js";
 import type { MarketRepo } from "./repo.js";
+import { runAlertJob } from "../signals/job.js";
+import type { Notifier } from "../signals/notifier.js";
+import type { SignalsRepo } from "../signals/repo.js";
 import type { NseArchive } from "./nse-archive.js";
 
 const TICK_MS = 15 * 60_000;
@@ -15,7 +18,17 @@ const CATCH_UP_DAYS = 10;
  * One process only. With several API replicas this would move behind a
  * Postgres advisory lock or into a separate worker.
  */
-export function startScheduler(db: Db, nse: NseArchive, market: MarketRepo, log: FastifyBaseLogger, now: () => number = Date.now) {
+export interface SchedulerDeps {
+  db: Db;
+  nse: NseArchive;
+  market: MarketRepo;
+  signals: SignalsRepo;
+  notifier: Notifier | null;
+  log: FastifyBaseLogger;
+  now?: () => number;
+}
+
+export function startScheduler({ db, nse, market, signals, notifier, log, now = Date.now }: SchedulerDeps) {
   let running = false;
 
   const tick = async () => {
@@ -23,7 +36,12 @@ export function startScheduler(db: Db, nse: NseArchive, market: MarketRepo, log:
     running = true;
     try {
       const job = await runEodJob(db, nse, { days: CATCH_UP_DAYS, now: now(), log });
-      if (job.results.some((r) => r.status === "ok")) await market.refreshSnapshot();
+      if (job.reparsed > 0 || job.results.some((r) => r.status === "ok")) await market.refreshSnapshot();
+      const latest = await market.latestDate();
+      if (latest) {
+        const alerts = await runAlertJob(db, signals, latest, notifier);
+        if (alerts.newEvents) log.info(alerts, "alerts evaluated");
+      }
     } catch (err) {
       log.error({ err }, "scheduler tick failed");
     } finally {

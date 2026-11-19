@@ -28,6 +28,9 @@ const Env = z
     /** Run the in-process EOD scheduler. Off in tests and one-off CLI runs. */
     /** Bearer token Vercel Cron (or any scheduler) sends to /api/cron/*. Unset disables the route. */
     CRON_SECRET: z.string().min(16).optional(),
+    /** Telegram alerts: a bot token from @BotFather and your chat id. Both or neither. */
+    TELEGRAM_BOT_TOKEN: z.string().min(20).optional(),
+    TELEGRAM_CHAT_ID: z.string().min(1).optional(),
     INGEST_SCHEDULE: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   })
   .superRefine((env, ctx) => {

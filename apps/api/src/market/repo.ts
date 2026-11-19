@@ -1,4 +1,5 @@
 import { marketStats, type IndexQuote, type IngestRun, type MarketOverview, type UniverseRow, type WatchItem } from "@kairo/core";
+import { computeIndicators, loadRows } from "./indicators.js";
 import type { Db } from "../db/db.js";
 
 export const UNIVERSE = "NIFTY 500";
@@ -16,39 +17,6 @@ export const HEADLINE_INDICES = [
 ];
 
 const SPARK_SESSIONS = 60;
-
-/**
- * Per-stock rolling context for one day, in a single pass over ~400 calendar days
- * of the universe. Named windows keep the frame definitions in one place:
- *   prev20  : the 20 sessions before today (volume baseline, excludes today)
- *   last50  : today and the 49 sessions before (SMA 50)
- *   last200 : today and the 199 before (SMA 200)
- *   prev250 : the 250 sessions before today (52-week range, excludes today)
- * Counts come along so callers can ignore stocks without enough history.
- */
-const UNIVERSE_SQL = `
-  with w as (
-    select b.symbol, b.date, b.close, b.prev_close, b.high, b.low, b.volume,
-           avg(b.volume) over prev20 as avg_vol20,
-           avg(b.close)  over last50 as sma50,  count(*) over last50  as n50,
-           avg(b.close)  over last200 as sma200, count(*) over last200 as n200,
-           max(b.high)   over prev250 as hi52,  min(b.low) over prev250 as lo52,
-           count(*)      over prev250 as n52
-    from daily_bars b
-    join index_members m on m.symbol = b.symbol and m.index_name = $2
-    where b.date between $1::date - 400 and $1::date
-    window
-      prev20  as (partition by b.symbol order by b.date rows between 20 preceding and 1 preceding),
-      last50  as (partition by b.symbol order by b.date rows between 49 preceding and current row),
-      last200 as (partition by b.symbol order by b.date rows between 199 preceding and current row),
-      prev250 as (partition by b.symbol order by b.date rows between 250 preceding and 1 preceding)
-  )
-  select w.symbol, i.name, i.industry,
-         w.close, w.prev_close as "prevClose", w.high, w.low, w.volume::float8 as volume,
-         w.avg_vol20::float8 as "avgVol20", w.sma50, w.n50::int as n50, w.sma200, w.n200::int as n200,
-         w.hi52, w.lo52, w.n52::int as n52
-  from w join instruments i on i.symbol = w.symbol
-  where w.date = $1::date`;
 
 export class MarketRepo {
   /**
@@ -105,11 +73,14 @@ export class MarketRepo {
   }
 
   private async compute(asOf: string): Promise<MarketOverview> {
-    const [rows, indices] = await Promise.all([
-      this.db.query<UniverseRow>(UNIVERSE_SQL, [asOf, UNIVERSE]),
-      this.indices(asOf),
-    ]);
-    const stats = marketStats(rows, UNIVERSE);
+    await computeIndicators(this.db, asOf);
+    const [rows, indices] = await Promise.all([loadRows(this.db, asOf, UNIVERSE), this.indices(asOf)]);
+    const universe: UniverseRow[] = rows.map((r) => ({
+      symbol: r.symbol, name: r.name, industry: r.industry, close: r.close, prevClose: r.prevClose,
+      high: r.high, low: r.low, volume: r.volume, avgVol20: r.avgVol20, sma50: r.sma50, n50: r.n50,
+      sma200: r.sma200, n200: r.n200, hi52: r.hi52, lo52: r.lo52, n52: r.n52,
+    }));
+    const stats = marketStats(universe, UNIVERSE);
     return { asOf, indices, ...stats };
   }
 
@@ -160,11 +131,14 @@ export class MarketRepo {
     return this.db.query<WatchItem>(
       `select w.symbol, w.note, w.added_at::text as "addedAt",
               coalesce(i.name, w.symbol) as name, i.industry,
-              b.close, case when b.prev_close > 0 then b.close / b.prev_close - 1 end as "changePct",
-              b.volume::float8 as volume
+              b.close, coalesce(ind.change_pct, case when b.prev_close > 0 then b.close / b.prev_close - 1 end) as "changePct",
+              b.volume::float8 as volume, ind.rsi14,
+              case when ind.n200 >= 200 then b.close / ind.sma200 - 1 end as "vsSma200",
+              ind.ret_63d as "ret63d"
        from watchlist_items w
        left join instruments i on i.symbol = w.symbol
        left join daily_bars b on b.symbol = w.symbol and b.date = (select max(date) from daily_bars)
+       left join indicators ind on ind.symbol = w.symbol and ind.date = b.date
        order by w.added_at`,
     );
   }

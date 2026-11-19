@@ -29,6 +29,17 @@ export class NseArchive {
     return strFromU8(csv[1]);
   }
 
+  /** Corporate actions (bc<DDMMYYYY>.csv) from the daily PR archive, or null if none was published. */
+  async corporateActions(date: string): Promise<string | null> {
+    const { dmy } = nseDateParts(date);
+    const ddmmyy = dmy.slice(0, 4) + dmy.slice(6);
+    const buf = await this.get(`/archives/equities/bhavcopy/pr/PR${ddmmyy}.zip`);
+    if (!buf) return null;
+    const files = unzipSync(new Uint8Array(buf), { filter: (f) => /^bc\d{8}\.csv$/i.test(f.name) });
+    const bc = Object.values(files)[0];
+    return bc ? strFromU8(bc) : "";
+  }
+
   async indexClose(date: string): Promise<string | null> {
     const { dmy } = nseDateParts(date);
     const buf = await this.get(`/content/indices/ind_close_all_${dmy}.csv`);

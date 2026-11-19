@@ -50,13 +50,27 @@ NSE archive ──► NseArchive (fetch, unzip, retry) ──► core parsers �
 
 **Analytics** run as one SQL statement over ~400 days of the Nifty 500 with named windows (`prev20`, `last50`, `last200`, `prev250`) producing each stock's volume baseline, SMAs and 52-week range. The pure `marketStats` function in core turns those rows into breadth, sectors and movers, so the rules are unit tested without a database. Stocks without enough history are excluded from SMA breadth rather than counted as below.
 
+## Signals pipeline (Phase 4)
+
+```
+import day ─► corporate actions ─► computeIndicators (adjusted, one SQL statement) ─► indicators
+                                                                                         │
+             market_snapshots ◄── marketStats ◄────────────────────────────────────────┤
+             /api/screens/*   ◄── runScreen (core, pure) ◄─────────────────────────────┤
+             alert_events ──► Telegram digest ◄── evaluateAlerts / newMatches ◄─────────┘
+```
+
+- **Indicators** are computed once per trading day for the Nifty 500 plus watchlist and alert symbols, with corporate-action adjustment (ADR 6), and stored (ADR 7).
+- **Screens** are JSON rules validated against a field whitelist and evaluated in TypeScript. "Stocks of the day" are six preset rules, each with a plain-language reason.
+- **Alerts**: price crosses, big moves, 200-day crosses, and new entrants to saved screens. They are evaluated after each import. Events are idempotent per day, and one Telegram digest goes out per run.
+
 ## Known limits (deliberate for now)
 
 | Limit | Why it is acceptable now | When it changes |
 |---|---|---|
 | In-memory sessions | One user, one process; a restart costs one login | Multiple instances, or Phase 5 (orders) |
 | End-of-day market data only | Free; see ADR 4 | Kite Connect data plan |
-| Unadjusted price history | Day change is right; SMAs/52w drift after splits | Corporate-actions table or Kite candles |
+| Corporate actions parsed from free text | Covers bonus, split, consolidation | Kite historical candles (pre-adjusted) |
 | Scheduler in the API process | One instance | Advisory lock or separate worker |
 | No XIRR for equity | Kite's API has no historical trades; average price has no dates | Tradebook CSV import from Console |
 | Sectors only for Nifty 500 stocks | NSE publishes industry per index list | Add more constituent lists |

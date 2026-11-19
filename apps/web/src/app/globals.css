@@ -145,6 +145,16 @@ code { font-family: var(--mono); font-size: 12px; background: var(--page); paddi
 .barlist-track span { display: block; height: 100%; background: var(--series-1); border-radius: 4px; }
 .barlist-value { text-align: right; font-variant-numeric: tabular-nums; }
 
+.select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--page); color: var(--ink); font: inherit; max-width: 100%; }
+.select:focus-visible, input[type="checkbox"]:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }
+.grow { flex: 1; min-width: 160px; }
+.input.num { flex: 0 0 auto; width: 96px; min-width: 0; text-align: right; }
+.conds { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.h3 { font-size: 14px; font-weight: 600; margin: 0; }
+.saved { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.saved > li { border-bottom: 1px solid var(--line); padding: 6px 0; }
+.saved > li:last-child { border-bottom: 0; }
+
 @media (max-width: 640px) {
   .barlist li { grid-template-columns: 110px 1fr 40px; }
   .topbar { flex-wrap: wrap; height: auto; padding: 12px 0; row-gap: 8px; }

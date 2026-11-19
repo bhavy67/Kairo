@@ -3,12 +3,23 @@ import { loadConfig } from "./config.js";
 import { openDb } from "./db/open.js";
 import { NseArchive } from "./market/nse-archive.js";
 import { MarketRepo } from "./market/repo.js";
+import { telegramNotifier } from "./signals/notifier.js";
+import { SignalsRepo } from "./signals/repo.js";
 import { startScheduler } from "./market/scheduler.js";
 
 const config = loadConfig();
 const db = await openDb(config);
 const app = await buildApp({ config, db });
-const scheduler = config.INGEST_SCHEDULE ? startScheduler(db, new NseArchive(config.NSE_ARCHIVE_URL), new MarketRepo(db), app.log) : null;
+const scheduler = config.INGEST_SCHEDULE
+  ? startScheduler({
+      db,
+      nse: new NseArchive(config.NSE_ARCHIVE_URL),
+      market: new MarketRepo(db),
+      signals: new SignalsRepo(db),
+      notifier: config.TELEGRAM_BOT_TOKEN && config.TELEGRAM_CHAT_ID ? telegramNotifier(config.TELEGRAM_BOT_TOKEN, config.TELEGRAM_CHAT_ID) : null,
+      log: app.log,
+    })
+  : null;
 
 const shutdown = async (signal: string) => {
   app.log.info({ signal }, "shutting down");

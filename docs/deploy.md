@@ -23,6 +23,7 @@ Project `kairo` (root directory `apps/web`, region `bom1` Mumbai), deployed on e
 | `CRON_SECRET` | Vercel Cron sends it as a bearer token. |
 | `DATA_MODE` | `demo` (public, read-only) or `kite`. |
 | `KITE_API_KEY`, `KITE_API_SECRET`, `KITE_ALLOWED_USER_ID` | Only for `DATA_MODE=kite`. |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Optional. Alert digest after each import. Create a bot with @BotFather, message it once, then read your chat id from `https://api.telegram.org/bot<token>/getUpdates`. |
 | `WEB_ORIGIN` | Defaults to the production domain; set it if you add a custom domain. |
 
 ### Database

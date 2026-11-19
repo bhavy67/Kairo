@@ -12,6 +12,9 @@ import type { PortfolioProvider } from "./providers/types.js";
 import { authRoutes } from "./routes/auth.js";
 import { cronRoutes } from "./routes/cron.js";
 import { marketRoutes } from "./routes/market.js";
+import { signalsRoutes } from "./routes/signals.js";
+import { telegramNotifier, type Notifier } from "./signals/notifier.js";
+import { SignalsRepo } from "./signals/repo.js";
 import { portfolioRoutes } from "./routes/portfolio.js";
 import { SessionStore, type Session } from "./session.js";
 
@@ -39,6 +42,9 @@ export interface AppContext {
   amfi: AmfiNavService;
   db: Db;
   market: MarketRepo;
+  signals: SignalsRepo;
+  /** Null when no channel is configured: alerts stay in-app only. */
+  notifier: Notifier | null;
   /** Throws 401 unless the request may see private data (always true in demo mode). */
   assertAccess(session: Session | undefined): void;
   /** Like assertAccess, and also blocks writes on a public demo deployment. */
@@ -72,6 +78,9 @@ export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Dat
     amfi: new AmfiNavService(config.AMFI_NAV_URL, fetchImpl, now),
     db,
     market: new MarketRepo(db),
+    signals: new SignalsRepo(db),
+    notifier:
+      config.TELEGRAM_BOT_TOKEN && config.TELEGRAM_CHAT_ID ? telegramNotifier(config.TELEGRAM_BOT_TOKEN, config.TELEGRAM_CHAT_ID, fetchImpl) : null,
     assertAccess(session) {
       if (kite && !session) throw new AppError(401, "unauthenticated", "Sign in with Kite to continue.");
     },
@@ -121,6 +130,7 @@ export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Dat
   await app.register(authRoutes(ctx), { prefix: "/api/auth" });
   await app.register(portfolioRoutes(ctx), { prefix: "/api" });
   await app.register(marketRoutes(ctx), { prefix: "/api" });
+  await app.register(signalsRoutes(ctx), { prefix: "/api" });
   await app.register(cronRoutes(ctx, fetchImpl), { prefix: "/api/cron" });
 
   return app;
