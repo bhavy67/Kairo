@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: No AI attribution in commit messages
+        if: github.event_name == 'pull_request'
+        run: |
+          if git log --format=%B origin/${{ github.base_ref }}..HEAD | grep -qiE 'co-authored-by:.*(claude|anthropic)|generated with \[?claude'; then
+            echo "AI attribution found in commit messages"; exit 1
+          fi

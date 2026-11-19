@@ -1,0 +1,20 @@
+services:
+  api:
+    build: { context: ., target: api }
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+    restart: unless-stopped
+    # Not published: only the web container talks to it.
+    expose: ["4000"]
+
+  web:
+    build:
+      context: .
+      target: web
+    environment:
+      API_URL: http://api:4000
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [api]
+    restart: unless-stopped
