@@ -1,6 +1,7 @@
 "use client";
 
 import { Allocation } from "@/components/Allocation";
+import { BarList } from "@/components/BarList";
 import { Change } from "@/components/Change";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { ErrorCard, Loading } from "@/components/States";
@@ -45,6 +46,16 @@ export default function Overview() {
           ]}
         />
       </section>
+
+      {data.sectors.length > 0 && (
+        <section className="card">
+          <div className="page-head" style={{ marginBottom: 12 }}>
+            <h2 style={{ margin: 0 }}>Equity by sector</h2>
+            <span className="muted">NSE industry classification</span>
+          </div>
+          <BarList items={data.sectors.map((s) => ({ label: s.sector, value: s.value, weight: s.weight, detail: `${money(s.value)} · ${s.holdings} holdings` }))} />
+        </section>
+      )}
 
       <section className="card">
         <div className="page-head" style={{ marginBottom: 8 }}>

@@ -23,3 +23,12 @@ export function isMarketOpen(now = new Date()): boolean {
 
 export const timeIst = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
+
+const idx = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const compact = new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 });
+export const level = (v: number) => idx.format(v);
+export const big = (v: number) => compact.format(v);
+export const ratio = (v: number | null) => (v === null ? "–" : `${v.toFixed(1)}×`);
+
+export const longDate = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
