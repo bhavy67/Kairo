@@ -7,12 +7,6 @@ const Env = z
     HOST: z.string().default("127.0.0.1"),
     /** "demo" serves a fake portfolio with no broker; "kite" talks to Zerodha. */
     DATA_MODE: z.enum(["demo", "kite"]).default("demo"),
-    /** Where the browser lands after login (the web app). */
-    // On Vercel, default to the project's production domain (a system env var).
-    WEB_ORIGIN: z
-      .string()
-      .url()
-      .default(process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
     SESSION_SECRET: z.string().min(32).optional(),
     KITE_API_KEY: z.string().min(1).optional(),
     KITE_API_SECRET: z.string().min(1).optional(),
@@ -25,12 +19,12 @@ const Env = z
     DATABASE_CA_CERT: z.string().optional(),
     DATA_DIR: z.string().default(".data"),
     NSE_ARCHIVE_URL: z.string().url().default("https://nsearchives.nseindia.com"),
-    /** Run the in-process EOD scheduler. Off in tests and one-off CLI runs. */
     /** Bearer token Vercel Cron (or any scheduler) sends to /api/cron/*. Unset disables the route. */
     CRON_SECRET: z.string().min(16).optional(),
     /** Telegram alerts: a bot token from @BotFather and your chat id. Both or neither. */
     TELEGRAM_BOT_TOKEN: z.string().min(20).optional(),
     TELEGRAM_CHAT_ID: z.string().min(1).optional(),
+    /** Run the in-process EOD scheduler. Off in tests, one-off CLI runs and on Vercel (Cron drives it). */
     INGEST_SCHEDULE: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   })
   .superRefine((env, ctx) => {

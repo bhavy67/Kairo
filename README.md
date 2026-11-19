@@ -6,7 +6,7 @@ A personal market desk for an Indian retail investor: portfolio, markets and sig
 
 ![status](https://img.shields.io/badge/phase-4%20·%20signals-0b0b0b)
 
-Live demo: https://kairo-vert-one.vercel.app (demo portfolio, real NSE end-of-day data)
+Live demo: https://kairo.bhavyladani.in (demo portfolio, real NSE end-of-day data)
 
 ## What it does today
 

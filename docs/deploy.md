@@ -11,7 +11,7 @@ Kairo runs in two shapes from the same code.
 
 ## Vercel
 
-Project `kairo` (root directory `apps/web`, region `bom1` Mumbai), deployed on every push to `main`. Settings live in `apps/web/vercel.json`.
+Project `kairo` (root directory `apps/web`, region `bom1` Mumbai), deployed on every push to `main`. Production domain: https://kairo.bhavyladani.in. Redirects after login are relative, so any domain works without configuration. Settings live in `apps/web/vercel.json`.
 
 ### Environment variables
 
@@ -24,7 +24,6 @@ Project `kairo` (root directory `apps/web`, region `bom1` Mumbai), deployed on e
 | `DATA_MODE` | `demo` (public, read-only) or `kite`. |
 | `KITE_API_KEY`, `KITE_API_SECRET`, `KITE_ALLOWED_USER_ID` | Only for `DATA_MODE=kite`. |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Optional. Alert digest after each import. Create a bot with @BotFather, message it once, then read your chat id from `https://api.telegram.org/bot<token>/getUpdates`. |
-| `WEB_ORIGIN` | Defaults to the production domain; set it if you add a custom domain. |
 
 ### Database
 
@@ -36,7 +35,7 @@ Project `kairo` (root directory `apps/web`, region `bom1` Mumbai), deployed on e
 The cron route fills at most `limit` trading days per call to fit the 60 s function budget. To load a year:
 
 ```bash
-curl -H "Authorization: Bearer $CRON_SECRET" "https://<domain>/api/cron/eod?days=400&limit=20"
+curl -H "Authorization: Bearer $CRON_SECRET" "https://kairo.bhavyladani.in/api/cron/eod?days=400&limit=20"
 ```
 
 Repeat until the response says `"more": false`.
@@ -44,7 +43,7 @@ Repeat until the response says `"more": false`.
 ### Switching to your Kite account
 
 1. Create a Personal app at developers.kite.trade (or rotate the secret of the existing one).
-2. Redirect URL: `https://<domain>/api/auth/callback`.
+2. Redirect URL: `https://kairo.bhavyladani.in/api/auth/callback`.
 3. In Vercel → Settings → Environment Variables add `KITE_API_KEY`, `KITE_API_SECRET` (sensitive), `KITE_ALLOWED_USER_ID`, and set `DATA_MODE=kite`.
 4. Redeploy.
 

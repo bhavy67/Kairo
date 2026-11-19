@@ -94,7 +94,7 @@ describe("kite auth flow", () => {
     const { kiteUrl, cb, sid } = await signIn(fetchImpl);
     expect(kiteUrl.host).toBe("kite.zerodha.com");
     expect(cb.statusCode).toBe(302);
-    expect(cb.headers.location).toBe("http://localhost:3000/");
+    expect(cb.headers.location).toBe("/"); // relative: works on any domain the app is served from
     expect(sid).toBeTruthy();
 
     const res = await app.inject({ url: "/api/portfolio", cookies: { kairo_sid: sid! } });

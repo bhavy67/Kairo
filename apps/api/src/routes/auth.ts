@@ -20,8 +20,11 @@ export const authRoutes =
   async (app) => {
     const { config, kite, sessions } = ctx;
     const secure = config.NODE_ENV === "production";
-    const home = new URL("/", config.WEB_ORIGIN).toString();
-    const failed = (reason: string) => new URL(`/login?error=${reason}`, config.WEB_ORIGIN).toString();
+    // Relative redirects: the browser resolves them against whatever domain it is on
+    // (custom domain, vercel.app, localhost), so the session cookie and the landing
+    // page are always on the same origin. No configured "own URL" to drift.
+    const home = "/";
+    const failed = (reason: string) => `/login?error=${reason}`;
 
     app.get("/login", async (_req, reply) => {
       if (!kite) return reply.redirect(home);
