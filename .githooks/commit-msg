@@ -1,0 +1,6 @@
+#!/bin/sh
+# Rejects commits that carry AI attribution. Kairo commits are authored by Bhavy only.
+if grep -qiE '^(co-authored-by|claude-session|generated with|signed-off-by):.*(claude|anthropic)|anthropic\.com|generated with \[?claude' "$1"; then
+  echo "commit-msg: AI attribution found in the commit message. Remove it and commit again." >&2
+  exit 1
+fi
