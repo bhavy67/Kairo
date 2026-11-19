@@ -1,12 +1,13 @@
 "use client";
 
+import { SymbolLink } from "@/components/SymbolLink";
 import type { HoldingView } from "@kairo/core";
 import { money, money2, percent, qty, share } from "@/lib/format";
 import { Change } from "./Change";
 import { SortableTable, type Column } from "./SortableTable";
 
 const COLUMNS: Column<HoldingView>[] = [
-  { key: "symbol", label: "Instrument", sortValue: (h) => h.symbol, render: (h) => (<><div className="sym">{h.symbol}</div><div className="sub">{h.exchange}</div></>) },
+  { key: "symbol", label: "Instrument", sortValue: (h) => h.symbol, render: (h) => (<><SymbolLink symbol={h.symbol} /><div className="sub">{h.exchange}</div></>) },
   { key: "qty", label: "Qty", render: (h) => qty(h.quantity) },
   { key: "avg", label: "Avg cost", render: (h) => money2(h.averagePrice) },
   { key: "ltp", label: "LTP", render: (h) => money2(h.lastPrice) },

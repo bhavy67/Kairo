@@ -316,3 +316,26 @@ describe("corporate-action reparse", () => {
     expect(await reparseCorporateActions(db)).toBe(0);
   });
 });
+
+describe("stock detail and search", () => {
+  it("returns an adjusted one-year series, signals and symbol search", async () => {
+    const days = weekdays(260, "2026-11-19");
+    const { nse } = fakeNse(days);
+    await refreshConstituents(db, nse);
+    await backfill(db, nse, { days: 380, now: NOW, delayMs: 0 });
+    const app = await buildApp({ db, config: loadConfig({ NODE_ENV: "test" }), logger: false });
+    await app.inject("/api/market/overview"); // computes indicators
+
+    const res = await app.inject("/api/stocks/up");
+    expect(res.statusCode).toBe(200);
+    const s = res.json();
+    expect(s).toMatchObject({ symbol: "UP", name: "Up Ltd.", asOf: "2026-11-19", close: 359 });
+    expect(s.series.length).toBeGreaterThan(200);
+    expect(s.signals.rsi14).toBe(100);
+    expect((await app.inject("/api/stocks/NOPE")).statusCode).toBe(404);
+
+    expect((await app.inject("/api/symbols?q=u")).json().results[0]).toEqual({ symbol: "UP", name: "Up Ltd." });
+    expect((await app.inject("/api/symbols?q=down%20l")).json().results.map((r: { symbol: string }) => r.symbol)).toEqual(["DOWN"]);
+    await app.close();
+  }, 30_000);
+});

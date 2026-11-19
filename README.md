@@ -68,7 +68,7 @@ packages/core  Domain types, portfolio math, NSE/AMFI parsers, market stats
 docs/          Architecture, decision records, roadmap
 ```
 
-Read [docs/architecture.md](docs/architecture.md) for how the pieces fit and why, and [docs/deploy.md](docs/deploy.md) for hosting (Vercel + Supabase, or Docker).
+Design language: [docs/design.md](docs/design.md). Read [docs/architecture.md](docs/architecture.md) for how the pieces fit and why, and [docs/deploy.md](docs/deploy.md) for hosting (Vercel + Supabase, or Docker).
 
 ## Scripts
 

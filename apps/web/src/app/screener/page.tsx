@@ -1,5 +1,6 @@
 "use client";
 
+import { SymbolLink } from "@/components/SymbolLink";
 import type { Comparator, Condition, NumericField, ScreenRule } from "@kairo/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
@@ -139,7 +140,7 @@ function PresetCard({ p, onOpen }: { p: PresetResult; onOpen: () => void }) {
           <tbody>
             {p.rows.map((r) => (
               <tr key={r.symbol} title={`${r.name} · ${r.industry}`}>
-                <td><span className="sym">{r.symbol}</span></td>
+                <td><SymbolLink symbol={r.symbol} /></td>
                 <td className="sub">{NUMERIC_OPTIONS.find(([k]) => k === p.rule.sort.field)?.[1]}</td>
                 <td>{formatField(r, p.rule.sort.field)}</td>
               </tr>

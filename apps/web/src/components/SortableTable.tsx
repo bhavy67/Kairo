@@ -42,7 +42,7 @@ export function SortableTable<T>({
 
   return (
     <div className="table-wrap">
-      <table>
+      <table className="cardable">
         <caption className="sr-only" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
           {caption}
         </caption>
@@ -69,7 +69,7 @@ export function SortableTable<T>({
           {sorted.map((r) => (
             <tr key={rowKey(r)}>
               {columns.map((c) => (
-                <td key={c.key}>{c.render(r)}</td>
+                <td key={c.key} data-label={c.label}>{c.render(r)}</td>
               ))}
             </tr>
           ))}

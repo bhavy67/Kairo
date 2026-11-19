@@ -1,5 +1,19 @@
 import type { AlertKind, IngestRun, MarketOverview, PortfolioSnapshot, ScreenRow, ScreenRule, TradeSummary, WatchItem } from "@kairo/core";
 
+export interface StockDetail {
+  symbol: string;
+  name: string;
+  industry: string | null;
+  asOf: string;
+  close: number;
+  changePct: number | null;
+  series: { date: string; close: number }[];
+  signals: ScreenRow | null;
+  position: { quantity: number; averagePrice: number; lastPrice: number } | null;
+  watching: boolean;
+  alerts: { id: number; kind: AlertKind; threshold: number | null }[];
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -91,5 +105,7 @@ export const api = {
       }),
     ),
   clearTrades: () => send<void>("/api/trades", "DELETE"),
+  stock: (symbol: string) => getJson<StockDetail>(`/api/stocks/${encodeURIComponent(symbol)}`),
+  symbols: (q: string) => getJson<{ results: { symbol: string; name: string }[] }>(`/api/symbols?q=${encodeURIComponent(q)}`),
   logout: () => fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }),
 };

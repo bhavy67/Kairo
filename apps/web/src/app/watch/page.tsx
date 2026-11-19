@@ -1,5 +1,6 @@
 "use client";
 
+import { SymbolLink } from "@/components/SymbolLink";
 import type { WatchItem } from "@kairo/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
@@ -29,7 +30,7 @@ export default function Watchlist() {
   };
 
   const columns: Column<WatchItem>[] = [
-    { key: "symbol", label: "Symbol", sortValue: (w) => w.symbol, render: (w) => (<><div className="sym">{w.symbol}</div><div className="sub">{w.name ?? ""}</div></>) },
+    { key: "symbol", label: "Symbol", sortValue: (w) => w.symbol, render: (w) => (<><SymbolLink symbol={w.symbol} /><div className="sub">{w.name ?? ""}</div></>) },
     { key: "industry", label: "Industry", sortValue: (w) => w.industry ?? "", render: (w) => <span className="sub">{w.industry ?? "–"}</span> },
     { key: "close", label: "Close", render: (w) => (w.close == null ? "–" : money2(w.close)) },
     { key: "chg", label: "Day", sortValue: (w) => w.changePct ?? 0, render: (w) => (w.changePct == null ? "–" : <Change value={w.changePct} format={(v) => percent(v)} />) },

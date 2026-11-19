@@ -1,5 +1,6 @@
 "use client";
 
+import { SymbolLink } from "@/components/SymbolLink";
 import type { Breadth, IndexQuote, Mover, SectorMove } from "@kairo/core";
 import { useQuery } from "@tanstack/react-query";
 import { Change } from "@/components/Change";
@@ -151,7 +152,7 @@ function MoverList({ title, note, rows, showRatio }: { title: string; note?: str
           <tbody>
             {rows.map((r) => (
               <tr key={r.symbol} title={`${r.name} · ${r.industry} · vol ${big(r.volume)}`}>
-                <td><div className="sym">{r.symbol}</div><div className="sub">{money2(r.close)}</div></td>
+                <td><SymbolLink symbol={r.symbol} /><div className="sub">{money2(r.close)}</div></td>
                 <td>{showRatio ? <span>{ratio(r.volumeRatio)}</span> : null}</td>
                 <td><Change value={r.changePct} format={(v) => percent(v)} /></td>
               </tr>

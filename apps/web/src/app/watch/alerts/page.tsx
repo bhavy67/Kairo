@@ -1,8 +1,10 @@
 "use client";
 
+import { SymbolLink } from "@/components/SymbolLink";
 import type { AlertKind } from "@kairo/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 import { ErrorCard, Loading } from "@/components/States";
 import { api, ApiError, type AlertView } from "@/lib/api";
 import { longDate, money2 } from "@/lib/format";
@@ -20,10 +22,10 @@ function describe(a: AlertView): string {
   return `${k.label} ${k.unit === "%" ? `${(a.threshold * 100).toFixed(1)}%` : money2(a.threshold)}`;
 }
 
-export default function Alerts() {
+function AlertsInner() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["alerts"], queryFn: api.alerts });
-  const [symbol, setSymbol] = useState("");
+  const [symbol, setSymbol] = useState(useSearchParams()?.get("symbol") ?? "");
   const [kind, setKind] = useState<AlertKind>("price_above");
   const [threshold, setThreshold] = useState("");
   const invalidate = () => qc.invalidateQueries({ queryKey: ["alerts"] });
@@ -80,7 +82,7 @@ export default function Alerts() {
             <tbody>
               {q.data.alerts.map((a) => (
                 <tr key={a.id}>
-                  <td><span className="sym">{a.symbol}</span></td>
+                  <td><SymbolLink symbol={a.symbol} /></td>
                   <td style={{ textAlign: "left" }}>{describe(a)}</td>
                   <td><button className="btn-quiet" onClick={() => remove.mutate(a.id)} aria-label={`Delete alert for ${a.symbol}`}>Delete</button></td>
                 </tr>
@@ -110,5 +112,13 @@ export default function Alerts() {
         )}
       </section>
     </div>
+  );
+}
+
+export default function Alerts() {
+  return (
+    <Suspense>
+      <AlertsInner />
+    </Suspense>
   );
 }

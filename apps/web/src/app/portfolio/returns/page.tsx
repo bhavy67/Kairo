@@ -1,5 +1,6 @@
 "use client";
 
+import { SymbolLink } from "@/components/SymbolLink";
 import type { PositionSummary, Realized } from "@kairo/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
@@ -13,7 +14,7 @@ const signedMoney = (v: number) => <Change value={v} format={money} />;
 const xirrCell = (v: number | null) => (v === null ? "–" : <Change value={v} format={(x) => percent(x)} />);
 
 const POSITION_COLUMNS: Column<PositionSummary>[] = [
-  { key: "symbol", label: "Stock", sortValue: (p) => p.symbol, render: (p) => <span className="sym">{p.symbol}</span> },
+  { key: "symbol", label: "Stock", sortValue: (p) => p.symbol, render: (p) => <SymbolLink symbol={p.key}>{p.symbol}</SymbolLink> },
   { key: "qty", label: "Open qty", sortValue: (p) => p.openQuantity, render: (p) => qty(p.openQuantity) },
   { key: "avg", label: "Avg cost", render: (p) => (p.avgCost === null ? "–" : money2(p.avgCost)) },
   { key: "value", label: "Value", sortValue: (p) => p.currentValue ?? 0, render: (p) => (p.currentValue === null ? "–" : money(p.currentValue)) },
@@ -24,7 +25,7 @@ const POSITION_COLUMNS: Column<PositionSummary>[] = [
 
 const TERM = { intraday: "Intraday", short: "Short-term", long: "Long-term" } as const;
 const REALIZED_COLUMNS: Column<Realized>[] = [
-  { key: "key", label: "Stock", sortValue: (r) => r.key, render: (r) => <span className="sym">{r.key}</span> },
+  { key: "key", label: "Stock", sortValue: (r) => r.key, render: (r) => <SymbolLink symbol={r.key} /> },
   { key: "sell", label: "Sold", sortValue: (r) => r.sellDate, render: (r) => longDate(r.sellDate) },
   { key: "qty", label: "Qty", render: (r) => qty(r.quantity) },
   { key: "buy", label: "Bought", render: (r) => <span className="sub">{longDate(r.buyDate)} · {money2(r.buyPrice)}</span> },

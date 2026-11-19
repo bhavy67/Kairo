@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "@/lib/api";
 import { IconMarkets, IconPortfolio, IconScreener, IconSignOut, IconToday, IconWatch } from "./Icons";
+import { CommandPalette } from "./CommandPalette";
 import { Logo } from "./Logo";
 import { Loading } from "./States";
 import { ThemeToggle } from "./ThemeToggle";
@@ -61,6 +62,19 @@ export function Shell({ children }: { children: ReactNode }) {
   const onLogin = pathname === "/login";
   const me = useQuery({ queryKey: ["me"], queryFn: api.me, enabled: !onLogin });
 
+  const [palette, setPalette] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+      if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || (e.key === "/" && !typing)) {
+        e.preventDefault();
+        setPalette((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const unauthenticated = me.error instanceof ApiError && me.error.status === 401;
   useEffect(() => {
     if (unauthenticated) router.replace("/login");
@@ -83,6 +97,11 @@ export function Shell({ children }: { children: ReactNode }) {
           </Link>
           <TopNav pathname={pathname} />
           <div className="tools">
+            <button type="button" className="search-btn" onClick={() => setPalette(true)} aria-label="Search (⌘K)">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><circle cx="9" cy="9" r="5.5" /><path d="m13 13 4 4" /></svg>
+              <span className="t">Search</span>
+              <kbd>⌘K</kbd>
+            </button>
             {me.data?.mode === "demo" && <span className="badge">Demo</span>}
             <ThemeToggle />
             {me.data?.mode === "kite" && (
@@ -101,6 +120,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {me.isSuccess ? children : <Loading rows={4} />}
       </main>
       <BottomBar pathname={pathname} />
+      <CommandPalette open={palette} onClose={() => setPalette(false)} />
     </div>
   );
 }
