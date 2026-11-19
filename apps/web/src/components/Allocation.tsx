@@ -4,6 +4,8 @@ interface Part {
   label: string;
   value: number;
   color: string;
+  /** Label colour inside the segment; defaults to the page background. */
+  text?: string;
 }
 
 /** A segmented bar: one whole split into parts. Labels print inside only when they fit. */
@@ -17,7 +19,7 @@ export function Allocation({ parts }: { parts: Part[] }) {
         {visible.map((p) => {
           const w = p.value / total;
           return (
-            <div key={p.label} style={{ flexGrow: w, flexBasis: 0, background: p.color }} title={`${p.label}: ${money(p.value)} (${share(w)})`}>
+            <div key={p.label} style={{ flexGrow: w, flexBasis: 0, background: p.color, color: p.text ?? "var(--bg)" }} title={`${p.label}: ${money(p.value)} (${share(w)})`}>
               {w >= 0.08 ? share(w) : ""}
             </div>
           );

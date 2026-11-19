@@ -4,7 +4,7 @@ export function Loading({ rows = 3 }: { rows?: number }) {
   return (
     <div className="card stack" aria-busy="true" aria-label="Loading">
       {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="skeleton" style={{ width: `${90 - i * 15}%` }} />
+        <div key={i} className="skeleton" style={{ width: `${90 - i * 15}%`, animationDelay: `${i * 120}ms` }} />
       ))}
     </div>
   );

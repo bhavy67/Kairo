@@ -50,7 +50,7 @@ export default function Alerts() {
   return (
     <div className="stack">
       <div className="page-head">
-        <h1>Alerts</h1>
+        <h2 className="sr">Alerts</h2>
         <span className="muted">Checked after each NSE close · {q.data.channel ? `sent to ${q.data.channel}` : "in-app only (no Telegram configured)"}</span>
       </div>
 

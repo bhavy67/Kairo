@@ -42,7 +42,7 @@ export default function Returns() {
   return (
     <div className="stack">
       <div className="page-head">
-        <h1>Returns</h1>
+        <h2 className="sr">Returns</h2>
         <span className="muted">
           {s?.coverage ? `${s.coverage.trades} trades · ${longDate(s.coverage.from)} – ${longDate(s.coverage.to)}` : "From your Zerodha tradebook"}
         </span>

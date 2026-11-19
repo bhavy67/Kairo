@@ -3,23 +3,59 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "@/lib/api";
+import { IconMarkets, IconPortfolio, IconScreener, IconSignOut, IconToday, IconWatch } from "./Icons";
+import { Logo } from "./Logo";
+import { Loading } from "./States";
+import { ThemeToggle } from "./ThemeToggle";
 
-const NAV = [
-  { href: "/", label: "Overview" },
-  { href: "/holdings", label: "Holdings" },
-  { href: "/funds", label: "Funds" },
-  { href: "/returns", label: "Returns" },
-  { href: "/markets", label: "Markets" },
-  { href: "/screener", label: "Screener" },
-  { href: "/watchlist", label: "Watchlist" },
-  { href: "/alerts", label: "Alerts" },
-  { href: "/global", label: "Global" },
+export const NAV = [
+  { href: "/", label: "Today", Icon: IconToday, match: (p: string) => p === "/" },
+  { href: "/portfolio", label: "Portfolio", Icon: IconPortfolio, match: (p: string) => p.startsWith("/portfolio") },
+  { href: "/markets", label: "Markets", Icon: IconMarkets, match: (p: string) => p.startsWith("/markets") },
+  { href: "/screener", label: "Screener", Icon: IconScreener, match: (p: string) => p.startsWith("/screener") },
+  { href: "/watch", label: "Watch", Icon: IconWatch, match: (p: string) => p.startsWith("/watch") },
 ];
 
+/** Desktop nav with an ink pill that slides to the active item. */
+function TopNav({ pathname }: { pathname: string }) {
+  const ref = useRef<HTMLElement>(null);
+  const [pill, setPill] = useState<{ x: number; w: number } | null>(null);
+  const active = NAV.findIndex((n) => n.match(pathname));
+
+  useLayoutEffect(() => {
+    const el = ref.current?.querySelectorAll<HTMLAnchorElement>("a")[active];
+    setPill(el ? { x: el.offsetLeft, w: el.offsetWidth } : null);
+  }, [active]);
+
+  return (
+    <nav className="nav" aria-label="Primary" ref={ref}>
+      <span className="nav-pill" aria-hidden style={{ transform: `translateX(${pill?.x ?? 0}px)`, width: pill?.w ?? 0, opacity: pill ? 1 : 0 }} />
+      {NAV.map((n, i) => (
+        <Link key={n.href} href={n.href} aria-current={i === active ? "page" : undefined}>
+          {n.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+function BottomBar({ pathname }: { pathname: string }) {
+  return (
+    <nav className="bottombar" aria-label="Primary">
+      {NAV.map(({ href, label, Icon, match }) => (
+        <Link key={href} href={href} aria-current={match(pathname) ? "page" : undefined}>
+          <span className="ic"><Icon /></span>
+          {label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 export function Shell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
   const router = useRouter();
   const qc = useQueryClient();
   const onLogin = pathname === "/login";
@@ -41,23 +77,30 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <Link href="/" className="brand">kairo</Link>
-        <nav className="nav" aria-label="Primary">
-          {NAV.map((n) => (
-            <Link key={n.href} href={n.href} aria-current={pathname === n.href ? "page" : undefined}>
-              {n.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="who">
-          {me.data?.mode === "demo" && <span className="badge">Demo</span>}
-          {me.data?.user && <span className="name">{me.data.user.name}</span>}
-          {me.data?.mode === "kite" && (
-            <button className="btn-quiet" onClick={logout}>Sign out</button>
-          )}
+        <div className="topbar-in">
+          <Link href="/" className="brand" aria-label="Kairo home">
+            <Logo height={20} />
+          </Link>
+          <TopNav pathname={pathname} />
+          <div className="tools">
+            {me.data?.mode === "demo" && <span className="badge">Demo</span>}
+            <ThemeToggle />
+            {me.data?.mode === "kite" && (
+              <div className="who">
+                <span className="name">{me.data.user?.name}</span>
+                <button className="icon-btn" onClick={logout} aria-label="Sign out" title="Sign out">
+                  <IconSignOut />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
-      <main>{me.isSuccess ? children : null}</main>
+      {/* Keyed by path so each page fades in on navigation. */}
+      <main key={pathname} className="page">
+        {me.isSuccess ? children : <Loading rows={4} />}
+      </main>
+      <BottomBar pathname={pathname} />
     </div>
   );
 }

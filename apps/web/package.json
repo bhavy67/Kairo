@@ -14,6 +14,8 @@
     "test": "echo \"no web tests yet\""
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@kairo/api": "workspace:*",
     "@kairo/core": "workspace:*",
     "@tanstack/react-query": "^5.108.0",

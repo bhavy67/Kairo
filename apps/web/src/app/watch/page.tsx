@@ -42,7 +42,7 @@ export default function Watchlist() {
 
   return (
     <div className="stack">
-      <div className="page-head"><h1>Watchlist</h1><span className="muted">NSE close prices</span></div>
+      <div className="page-head"><h2 className="sr">Watchlist</h2><span className="muted">NSE close prices</span></div>
       <form className="card row" onSubmit={submit}>
         <label htmlFor="sym" className="sr">NSE symbol</label>
         <input id="sym" className="input" placeholder="NSE symbol, e.g. TCS" value={symbol} onChange={(e) => setSymbol(e.target.value)} autoComplete="off" spellCheck={false} />

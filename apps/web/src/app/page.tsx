@@ -1,6 +1,8 @@
 "use client";
 
 import { Allocation } from "@/components/Allocation";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { PageTitle } from "@/components/PageTitle";
 import { BarList } from "@/components/BarList";
 import { Change } from "@/components/Change";
 import { HoldingsTable } from "@/components/HoldingsTable";
@@ -17,14 +19,11 @@ export default function Overview() {
   const { summary: s, cash } = data;
   return (
     <div className="stack">
-      <div className="page-head">
-        <h1>Overview</h1>
-        <span className="muted" aria-live="polite">{isFetching ? "Refreshing…" : `As of ${timeIst(data.asOf)} IST`}</span>
-      </div>
+      <PageTitle title="Today" meta={<span aria-live="polite">{isFetching ? "Refreshing…" : `As of ${timeIst(data.asOf)} IST`}</span>} />
 
       <section className="card hero" aria-label="Portfolio value">
         <span className="hero-label">Portfolio value</span>
-        <span className="hero-value">{money(s.total.current)}</span>
+        <span className="hero-value"><AnimatedNumber value={s.total.current} format={money} /></span>
         <Change value={s.total.pnl} format={money} pct={percent(s.total.pnlPct)} />
       </section>
 
@@ -40,9 +39,9 @@ export default function Overview() {
         <h2>Allocation</h2>
         <Allocation
           parts={[
-            { label: "Equity", value: s.equity.current, color: "var(--series-1)" },
-            { label: "Mutual funds", value: s.funds.current, color: "var(--series-2)" },
-            { label: "Cash", value: cash.available, color: "var(--series-3)" },
+            { label: "Equity", value: s.equity.current, color: "var(--tone-1)" },
+            { label: "Mutual funds", value: s.funds.current, color: "var(--tone-2)" },
+            { label: "Cash", value: cash.available, color: "var(--tone-3)", text: "var(--ink)" },
           ]}
         />
       </section>
@@ -60,7 +59,7 @@ export default function Overview() {
       <section className="card">
         <div className="page-head" style={{ marginBottom: 8 }}>
           <h2 style={{ margin: 0 }}>Top holdings</h2>
-          <Link href="/holdings" className="muted">All holdings →</Link>
+          <Link href="/portfolio" className="muted">All holdings →</Link>
         </div>
         <HoldingsTable rows={data.holdings.slice(0, 5)} />
       </section>

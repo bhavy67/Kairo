@@ -17,7 +17,7 @@ export default function Markets() {
   if (!m.asOf) {
     return (
       <div className="stack">
-        <div className="page-head"><h1>Markets</h1></div>
+        <div className="page-head"><h2 className="sr">Markets</h2></div>
         <section className="card">
           <p style={{ marginTop: 0 }}>No market data yet. The API imports NSE end-of-day files every evening after 18:30 IST.</p>
           <p className="muted" style={{ marginBottom: 0 }}>To load history now: <code>pnpm --filter @kairo/api backfill</code></p>
@@ -29,7 +29,7 @@ export default function Markets() {
   return (
     <div className="stack">
       <div className="page-head">
-        <h1>Markets</h1>
+        <h2 className="sr">Markets</h2>
         <span className="muted">NSE close · {longDate(m.asOf)}</span>
       </div>
 

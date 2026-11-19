@@ -14,6 +14,17 @@ const config: NextConfig = {
   output: process.env.VERCEL ? undefined : "standalone",
   // Server-only Node packages: load them at runtime instead of bundling.
   serverExternalPackages: ["@kairo/api", "fastify", "@fastify/cookie", "pg", "@electric-sql/pglite"],
+  // Old routes from before the five-tab structure keep working.
+  async redirects() {
+    return [
+      { source: "/holdings", destination: "/portfolio", permanent: true },
+      { source: "/funds", destination: "/portfolio/funds", permanent: true },
+      { source: "/returns", destination: "/portfolio/returns", permanent: true },
+      { source: "/global", destination: "/markets/global", permanent: true },
+      { source: "/watchlist", destination: "/watch", permanent: true },
+      { source: "/alerts", destination: "/watch/alerts", permanent: true },
+    ];
+  },
   async rewrites() {
     return API_URL ? { beforeFiles: [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }], afterFiles: [], fallback: [] } : [];
   },

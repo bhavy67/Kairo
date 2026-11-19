@@ -3,6 +3,7 @@
 import type { Comparator, Condition, NumericField, ScreenRule } from "@kairo/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
+import { PageTitle } from "@/components/PageTitle";
 import { ScreenTable } from "@/components/ScreenTable";
 import { ErrorCard, Loading } from "@/components/States";
 import { api, ApiError, type PresetResult } from "@/lib/api";
@@ -57,10 +58,7 @@ export default function Screener() {
 
   return (
     <div className="stack">
-      <div className="page-head">
-        <h1>Screener</h1>
-        <span className="muted">{today.data.asOf ? `NSE close · ${longDate(today.data.asOf)}` : "No data yet"}</span>
-      </div>
+      <PageTitle title="Screener" meta={today.data.asOf ? `NSE close · ${longDate(today.data.asOf)}` : "No data yet"} />
 
       <section aria-labelledby="sotd">
         <h2 id="sotd">Stocks of the day</h2>
