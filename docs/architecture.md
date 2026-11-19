@@ -5,7 +5,9 @@
 ```
 Browser ──► Next.js (web, :3000) ──/api/* rewrite──► Fastify (api, :4000) ──► Kite Connect
                                                           │                ──► AMFI NAV file
-                                                          └─ in-memory sessions
+                                                          ├─ in-memory sessions
+                                                          ├─ Postgres (PGlite in dev/tests)
+                                                          └─ EOD scheduler ──► NSE archive
 ```
 
 The browser only talks to the web origin. Next.js rewrites `/api/*` to the API, so the session cookie is first-party and no CORS is involved.
@@ -34,11 +36,27 @@ The secret and the access token never reach the browser. Logs redact `authorizat
 - The web app polls every 30 s during NSE hours (09:15–15:30 IST, Mon–Fri) and every 10 min otherwise. Exchange holidays are not modelled yet.
 - AMFI NAVs are cached in memory for 6 hours, with single-flight refresh. A failed refresh keeps serving the last good copy.
 
+## Market data pipeline (Phase 2)
+
+```
+NSE archive ──► NseArchive (fetch, unzip, retry) ──► core parsers ──► ingestDay (one tx) ──► Postgres
+                                                                                               │
+/api/market/overview ◄── marketStats (pure TS) ◄── window-function SQL (one query) ◄───────────┘
+```
+
+**Tables:** `instruments` (Nifty 500, with industry), `index_members`, `daily_bars` (every EQ/BE stock, every day), `index_bars`, `ingest_runs`, `watchlist_items`. Schema lives in `apps/api/src/db/migrations.ts`.
+
+**Ingestion** is idempotent per day: rows are upserted with `unnest` (one round trip per file) and the day is recorded in `ingest_runs` inside the same transaction. A scheduler tick every 15 minutes fills any missing day in the last 10, so restarts and missed evenings heal themselves. A 404 for a past weekday is recorded as a holiday; a 404 for *today* is left unrecorded so it is retried once NSE publishes.
+
+**Analytics** run as one SQL statement over ~400 days of the Nifty 500 with named windows (`prev20`, `last50`, `last200`, `prev250`) producing each stock's volume baseline, SMAs and 52-week range. The pure `marketStats` function in core turns those rows into breadth, sectors and movers, so the rules are unit tested without a database. Stocks without enough history are excluded from SMA breadth rather than counted as below.
+
 ## Known limits (deliberate for now)
 
 | Limit | Why it is acceptable now | When it changes |
 |---|---|---|
 | In-memory sessions | One user, one process; a restart costs one login | Multiple instances, or Phase 5 (orders) |
-| No database | Phase 1 reads live broker state only | Phase 2: daily candles, watchlists, screeners |
+| End-of-day market data only | Free; see ADR 4 | Kite Connect data plan |
+| Unadjusted price history | Day change is right; SMAs/52w drift after splits | Corporate-actions table or Kite candles |
+| Scheduler in the API process | One instance | Advisory lock or separate worker |
 | No XIRR for equity | Kite's API has no historical trades; average price has no dates | Tradebook CSV import from Console |
-| No sector allocation | Kite holdings carry no sector | Phase 2: NSE index constituent files |
+| Sectors only for Nifty 500 stocks | NSE publishes industry per index list | Add more constituent lists |

@@ -9,12 +9,17 @@ Data plan: start on free sources; move to Kite Connect (₹500/month) for live t
 - [ ] Positions view (endpoint exists)
 - [ ] Tradebook CSV import → equity XIRR
 
-## Phase 2: Indian markets
-- [ ] Postgres; daily candle store and scheduled EOD jobs
-- [ ] Indices, India VIX, top movers, sector heatmap
-- [ ] Market breadth: advance/decline, % of Nifty 500 above 50/200 DMA
-- [ ] Sector allocation from NSE constituent files
-- [ ] Watchlists
+## Phase 2: Indian markets (done, end-of-day)
+- [x] Postgres with migrations; PGlite for dev and tests
+- [x] Daily NSE archive import, self-healing scheduler, backfill CLI, import log
+- [x] Indices with 60-session trend, India VIX
+- [x] Breadth: advances/declines, % of Nifty 500 above 50/200-day average, 52-week highs/lows
+- [x] Sector heatmap, top gainers/losers, volume spikes
+- [x] Sector allocation of holdings
+- [x] Watchlist
+- [ ] Corporate-action adjustment for price history
+- [ ] Breadth history chart (A/D line, % above 200-day over time)
+- [ ] Intraday quotes once on the Kite data plan
 
 ## Phase 3: Global
 - [ ] US/EU/Asia indices, USD/INR, US 10Y, Brent (Finnhub or Twelve Data free tier)
