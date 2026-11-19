@@ -60,7 +60,11 @@ export async function reparseCorporateActions(db: Db): Promise<number> {
   const rows = await db.query<{ symbol: string; ex_date: string; purpose: string; ratio: number | null }>(
     "select symbol, ex_date::text as ex_date, purpose, ratio from corporate_actions",
   );
-  const changed = rows.filter((r) => actionRatio(r.purpose) !== r.ratio);
+  // Compare with a tolerance: some servers return float8 as 15-digit text, so a
+  // 1:3 bonus (4/3) never round-trips exactly, and an exact compare would reset
+  // every indicator on every run.
+  const same = (a: number | null, b: number | null) => (a === null || b === null ? a === b : Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a)));
+  const changed = rows.filter((r) => !same(actionRatio(r.purpose), r.ratio));
   if (changed.length === 0) return 0;
   await db.query(
     `update corporate_actions c set ratio = u.ratio

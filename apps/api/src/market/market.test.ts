@@ -310,5 +310,9 @@ describe("corporate-action reparse", () => {
     const [r] = await db.query<{ ratio: number }>("select ratio from corporate_actions");
     expect(r!.ratio).toBe(5);
     expect(await reparseCorporateActions(db)).toBe(0); // idempotent
+
+    // A server that returns float8 rounded to 15 digits must not look like a change.
+    await db.query("insert into corporate_actions values ('GOLDIAM', '2026-07-10', 'BONUS 1:3', 1.33333333333333)");
+    expect(await reparseCorporateActions(db)).toBe(0);
   });
 });
