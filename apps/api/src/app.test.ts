@@ -150,3 +150,50 @@ describe("kite auth flow", () => {
     expect(res.statusCode).toBe(502);
   });
 });
+
+describe("session storage", () => {
+  it("stores only a hash of the session id and an encrypted token", async () => {
+    const db = await testDb();
+    const { fetchImpl } = fakeKite();
+    app = await buildApp({ db, config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    const { sid } = await signIn(fetchImpl);
+    const [row] = await db.query<{ id_hash: string; token_enc: string }>("select id_hash, token_enc from sessions");
+    const raw = app.unsignCookie(sid!).value!;
+    expect(row!.id_hash).not.toContain(raw);
+    expect(row!.token_enc).not.toContain("tok");
+    // A second app instance (another serverless invocation) sees the same session.
+    const other = await buildApp({ db, config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    expect((await other.inject({ url: "/api/auth/me", cookies: { kairo_sid: sid! } })).statusCode).toBe(200);
+    await other.close();
+  });
+
+  it("treats sessions sealed with another secret as signed out", async () => {
+    const db = await testDb();
+    const { fetchImpl } = fakeKite();
+    app = await buildApp({ db, config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    const { sid } = await signIn(fetchImpl);
+    const rotated = await buildApp({ db, config: loadConfig({ ...KITE_ENV, SESSION_SECRET: "y".repeat(32) }), fetch: fetchImpl, logger: false });
+    const raw = app.unsignCookie(sid!).value!;
+    const resigned = rotated.signCookie(raw);
+    expect((await rotated.inject({ url: "/api/auth/me", cookies: { kairo_sid: resigned } })).statusCode).toBe(401);
+    await rotated.close();
+  });
+});
+
+describe("public demo", () => {
+  it("is read-only in production", async () => {
+    app = await buildApp({ db: await testDb(), config: loadConfig({ NODE_ENV: "production" }), logger: false });
+    const res = await app.inject({ method: "POST", url: "/api/watchlist", payload: { symbol: "TCS" } });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
+describe("cron route", () => {
+  it("is absent without a secret and rejects a wrong token", async () => {
+    app = await buildApp({ db: await testDb(), config: loadConfig({ NODE_ENV: "test" }), logger: false });
+    expect((await app.inject("/api/cron/eod")).statusCode).toBe(404);
+    await app.close();
+    app = await buildApp({ db: await testDb(), config: loadConfig({ NODE_ENV: "test", CRON_SECRET: "s".repeat(20) }), logger: false });
+    expect((await app.inject({ url: "/api/cron/eod", headers: { authorization: "Bearer nope" } })).statusCode).toBe(401);
+  });
+});

@@ -1,14 +1,21 @@
 import type { NextConfig } from "next";
 
-const API_URL = process.env.API_URL ?? "http://127.0.0.1:4000";
+/**
+ * Two ways to serve /api:
+ * - API_URL set (local dev, Docker): proxy to the standalone Fastify server,
+ *   which also runs the in-process EOD scheduler.
+ * - API_URL unset (Vercel): src/app/api/[...path] runs Fastify in-process;
+ *   Vercel Cron drives the EOD import.
+ */
+const API_URL = process.env.API_URL;
 
 const config: NextConfig = {
   poweredByHeader: false,
-  output: "standalone",
-  // The browser only ever talks to this origin. /api is proxied to the Fastify
-  // server, so session cookies stay first-party and we need no CORS at all.
+  output: process.env.VERCEL ? undefined : "standalone",
+  // Server-only Node packages: load them at runtime instead of bundling.
+  serverExternalPackages: ["@kairo/api", "fastify", "@fastify/cookie", "pg", "@electric-sql/pglite"],
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }];
+    return API_URL ? { beforeFiles: [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }], afterFiles: [], fallback: [] } : [];
   },
   async headers() {
     return [
@@ -18,6 +25,7 @@ const config: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "same-origin" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
         ],
       },
     ];

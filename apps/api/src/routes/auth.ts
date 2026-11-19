@@ -51,7 +51,7 @@ export const authRoutes =
       }
 
       const profile = await kite.profile(access_token);
-      const session = sessions.create({ userId: user_id, userName: profile.user_name, accessToken: access_token });
+      const session = await sessions.create({ userId: user_id, userName: profile.user_name, accessToken: access_token });
       reply.setCookie(SESSION_COOKIE, session.id, {
         httpOnly: true,
         sameSite: "lax",
@@ -77,7 +77,7 @@ export const authRoutes =
     app.post("/logout", async (req, reply) => {
       if (req.session) {
         await kite?.invalidateSession(req.session.accessToken);
-        sessions.delete(req.session.id);
+        await sessions.delete(req.session.id);
       }
       reply.clearCookie(SESSION_COOKIE, { path: "/" });
       return reply.status(204).send();

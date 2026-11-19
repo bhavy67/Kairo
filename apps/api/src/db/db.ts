@@ -1,4 +1,4 @@
-import { PGlite } from "@electric-sql/pglite";
+import type { PGlite } from "@electric-sql/pglite";
 import pg from "pg";
 
 /**
@@ -18,8 +18,9 @@ export interface Db {
   close(): Promise<void>;
 }
 
-export function pgDb(connectionString: string): Db {
-  const pool = new pg.Pool({ connectionString, max: 5, idleTimeoutMillis: 30_000 });
+export function pgDb(connectionString: string, { max = 5 }: { max?: number } = {}): Db {
+  // Serverless: keep the per-instance pool tiny and let the provider's pooler fan in.
+  const pool = new pg.Pool({ connectionString, max, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 10_000 });
   const wrap = (client: pg.Pool | pg.PoolClient): Omit<Db, "tx" | "close"> => ({
     async query<T extends object>(sql: string, params: unknown[] = []) {
       return (await client.query(sql, params)).rows as T[];
@@ -49,6 +50,8 @@ export function pgDb(connectionString: string): Db {
 }
 
 export async function pgliteDb(dataDir?: string): Promise<Db> {
+  // Loaded lazily: production bundles never pull in the 3 MB WASM build.
+  const { PGlite } = await import("@electric-sql/pglite");
   const lite = dataDir ? new PGlite(dataDir) : new PGlite();
   await lite.waitReady;
   type Q = Pick<PGlite, "query" | "exec">;

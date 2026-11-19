@@ -20,6 +20,8 @@ const Env = z
     DATA_DIR: z.string().default(".data"),
     NSE_ARCHIVE_URL: z.string().url().default("https://nsearchives.nseindia.com"),
     /** Run the in-process EOD scheduler. Off in tests and one-off CLI runs. */
+    /** Bearer token Vercel Cron (or any scheduler) sends to /api/cron/*. Unset disables the route. */
+    CRON_SECRET: z.string().min(16).optional(),
     INGEST_SCHEDULE: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   })
   .superRefine((env, ctx) => {

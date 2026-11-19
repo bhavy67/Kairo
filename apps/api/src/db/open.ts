@@ -6,7 +6,7 @@ import { migrate } from "./migrations.js";
 
 export async function openDb(config: Config): Promise<Db> {
   let db: Db;
-  if (config.DATABASE_URL) db = pgDb(config.DATABASE_URL);
+  if (config.DATABASE_URL) db = pgDb(config.DATABASE_URL, { max: process.env.VERCEL ? 2 : 5 });
   else {
     if (config.NODE_ENV === "production") throw new Error("DATABASE_URL is required in production");
     const dir = join(config.DATA_DIR, "pglite");

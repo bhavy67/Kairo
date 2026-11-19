@@ -10,6 +10,7 @@ import { demoProvider } from "./providers/demo.js";
 import { kiteProvider } from "./providers/kite.js";
 import type { PortfolioProvider } from "./providers/types.js";
 import { authRoutes } from "./routes/auth.js";
+import { cronRoutes } from "./routes/cron.js";
 import { marketRoutes } from "./routes/market.js";
 import { portfolioRoutes } from "./routes/portfolio.js";
 import { SessionStore, type Session } from "./session.js";
@@ -32,6 +33,7 @@ export interface Deps {
 
 export interface AppContext {
   config: Config;
+  now: () => number;
   kite: KiteClient | null;
   sessions: SessionStore;
   amfi: AmfiNavService;
@@ -39,6 +41,8 @@ export interface AppContext {
   market: MarketRepo;
   /** Throws 401 unless the request may see private data (always true in demo mode). */
   assertAccess(session: Session | undefined): void;
+  /** Like assertAccess, and also blocks writes on a public demo deployment. */
+  assertWrite(session: Session | undefined): void;
   /** Resolves the provider for a request, or throws 401 when a Kite session is required. */
   providerFor(session: Session | undefined): PortfolioProvider;
 }
@@ -53,14 +57,16 @@ export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Dat
     trustProxy: true,
   });
 
-  await app.register(cookie, { secret: config.SESSION_SECRET ?? "demo-mode-cookie-secret-not-for-production" });
+  const secret = config.SESSION_SECRET ?? "demo-mode-cookie-secret-not-for-production";
+  await app.register(cookie, { secret });
 
-  const sessions = new SessionStore(now);
+  const sessions = new SessionStore(db, secret, now);
   const kite = config.DATA_MODE === "kite" ? new KiteClient(config.KITE_API_KEY!, fetchImpl) : null;
   const demo = demoProvider(now);
 
   const ctx: AppContext = {
     config,
+    now,
     kite,
     sessions,
     amfi: new AmfiNavService(config.AMFI_NAV_URL, fetchImpl, now),
@@ -68,6 +74,10 @@ export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Dat
     market: new MarketRepo(db),
     assertAccess(session) {
       if (kite && !session) throw new AppError(401, "unauthenticated", "Sign in with Kite to continue.");
+    },
+    assertWrite(session) {
+      ctx.assertAccess(session);
+      if (!kite && config.NODE_ENV === "production") throw new AppError(403, "read_only", "The public demo is read-only.");
     },
     providerFor(session) {
       ctx.assertAccess(session);
@@ -79,14 +89,14 @@ export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Dat
   app.addHook("onRequest", async (req) => {
     const raw = req.cookies[SESSION_COOKIE];
     const unsigned = raw ? req.unsignCookie(raw) : null;
-    req.session = unsigned?.valid ? sessions.get(unsigned.value ?? undefined) : undefined;
+    req.session = unsigned?.valid ? await sessions.get(unsigned.value ?? undefined) : undefined;
   });
 
-  app.setErrorHandler((err, req, reply) => {
+  app.setErrorHandler(async (err, req, reply) => {
     if (err instanceof AppError) {
       // The broker rejected the token: drop our session so the UI routes to login.
       if (err.code === "session_expired" && req.session) {
-        sessions.delete(req.session.id);
+        await sessions.delete(req.session.id);
         reply.clearCookie(SESSION_COOKIE, { path: "/" });
       }
       if (err.statusCode >= 500) req.log.warn({ err }, err.message);
@@ -111,6 +121,7 @@ export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Dat
   await app.register(authRoutes(ctx), { prefix: "/api/auth" });
   await app.register(portfolioRoutes(ctx), { prefix: "/api" });
   await app.register(marketRoutes(ctx), { prefix: "/api" });
+  await app.register(cronRoutes(ctx, fetchImpl), { prefix: "/api/cron" });
 
   return app;
 }

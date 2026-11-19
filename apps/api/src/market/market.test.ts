@@ -48,7 +48,7 @@ function fakeNse(days: string[], holidays = new Set<string>()) {
     const [dd, mm, yyyy] = [date.slice(8), date.slice(5, 7), date.slice(0, 4)];
     return new Response(`Index Name,Index Date,Open Index Value,High Index Value,Low Index Value,Closing Index Value,Points Change,Change(%),Volume,Turnover (Rs. Cr.),P/E,P/B,Div Yield\nNifty 50,${dd}-${mm}-${yyyy},1,1,1,${20000 + i},1,.5,1,1,22,3,1\n`);
   }) as typeof fetch;
-  return { nse: new NseArchive("https://nse.test", fetchImpl, 0), requests };
+  return { nse: new NseArchive("https://nse.test", fetchImpl, 0), requests, fetchImpl };
 }
 
 /** N consecutive weekdays ending on the given date. */
@@ -138,6 +138,24 @@ describe("backfill and overview", () => {
   it("returns an empty overview before any data is loaded", async () => {
     const app = await buildApp({ db, config: loadConfig({ NODE_ENV: "test" }), logger: false });
     expect((await app.inject("/api/market/overview")).json()).toMatchObject({ asOf: null, breadth: null });
+    await app.close();
+  });
+});
+
+describe("cron route", () => {
+  it("fills missing days in limited chunks and reports when more remain", async () => {
+    const days = weekdays(30, "2026-11-19");
+    const { fetchImpl } = fakeNse(days);
+    const config = loadConfig({ NODE_ENV: "test", CRON_SECRET: "c".repeat(20), NSE_ARCHIVE_URL: "https://nse.test" });
+    const app = await buildApp({ db, config, fetch: fetchImpl, now: () => NOW, logger: false });
+    const call = () => app.inject({ url: "/api/cron/eod?days=14&limit=4", headers: { authorization: `Bearer ${"c".repeat(20)}` } });
+    const first = (await call()).json();
+    expect(first).toMatchObject({ ok: true, constituentsRefreshed: true, ingested: 4, more: true });
+    let last = first;
+    for (let i = 0; i < 5 && last.more; i++) last = (await call()).json();
+    expect(last.more).toBe(false);
+    const [c] = await db.query<{ n: number }>("select count(distinct date)::int as n from daily_bars");
+    expect(c!.n).toBe(10); // 14 calendar days ending Thu 19 Nov (after 18:30 IST) = 10 weekdays
     await app.close();
   });
 });

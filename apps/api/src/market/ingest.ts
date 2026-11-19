@@ -121,6 +121,8 @@ async function missingDates(db: Db, from: string, to: string): Promise<string[]>
 
 export interface BackfillOptions {
   days: number;
+  /** Stop after this many trading-day attempts (serverless time budget). Newest first. */
+  limit?: number;
   now?: number;
   delayMs?: number;
   log?: Pick<FastifyBaseLogger, "info" | "warn">;
@@ -130,13 +132,15 @@ export interface BackfillOptions {
  * Fill every missing day in the last `days` calendar days. Sequential with a
  * pause between days: the archive is a shared public service, not ours.
  */
-export async function backfill(db: Db, nse: NseArchive, { days, now = Date.now(), delayMs = 400, log }: BackfillOptions): Promise<DayResult[]> {
+export async function backfill(db: Db, nse: NseArchive, { days, limit = Infinity, now = Date.now(), delayMs = 400, log }: BackfillOptions): Promise<DayResult[]> {
   // Today only counts once the file should exist.
   const today = istDate(now);
   const to = istMinutes(now) >= EOD_READY_MINUTES ? today : addDays(today, -1);
   const dates = await missingDates(db, addDays(to, -(days - 1)), to);
   const results: DayResult[] = [];
+  let attempts = 0;
   for (const date of dates) {
+    if (!isWeekend(date) && attempts++ >= limit) break;
     const r = await ingestDay(db, nse, date, now);
     results.push(r);
     if (r.status === "failed") log?.warn({ date, error: r.error }, "eod ingest failed");
@@ -144,4 +148,30 @@ export async function backfill(db: Db, nse: NseArchive, { days, now = Date.now()
     if (!isWeekend(date) && delayMs > 0) await new Promise((res) => setTimeout(res, delayMs));
   }
   return results;
+}
+
+export interface EodJobResult {
+  constituentsRefreshed: boolean;
+  results: DayResult[];
+  /** True when the time budget ran out before every missing day was filled. */
+  more: boolean;
+}
+
+/**
+ * The daily job, shared by the in-process scheduler and the HTTP cron route:
+ * refresh constituents when a week old, then fill missing days, newest first.
+ */
+export async function runEodJob(
+  db: Db,
+  nse: NseArchive,
+  { days = 10, limit = Infinity, now = Date.now(), delayMs = 400, log }: Partial<BackfillOptions> = {},
+): Promise<EodJobResult> {
+  const [row] = await db.query<{ stale: boolean }>(
+    "select coalesce(max(updated_at) < now() - interval '7 days', true) as stale from instruments",
+  );
+  const constituentsRefreshed = row?.stale ?? true;
+  if (constituentsRefreshed) await refreshConstituents(db, nse);
+  const results = await backfill(db, nse, { days, limit, now, delayMs, ...(log ? { log } : {}) });
+  const tradingAttempts = results.filter((r) => !isWeekend(r.date)).length;
+  return { constituentsRefreshed, results, more: tradingAttempts >= limit };
 }

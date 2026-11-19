@@ -73,6 +73,24 @@ const MIGRATIONS: { id: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: 2,
+    name: "sessions",
+    sql: `
+      -- Serverless instances share nothing in memory, so sessions live here.
+      -- id_hash = sha256(cookie value): a database leak does not yield usable cookies.
+      -- token_enc = AES-256-GCM(Kite access token), key derived from SESSION_SECRET.
+      create table sessions (
+        id_hash    text primary key,
+        user_id    text not null,
+        user_name  text not null,
+        token_enc  text not null,
+        expires_at timestamptz not null,
+        created_at timestamptz not null default now()
+      );
+      create index sessions_expires_idx on sessions (expires_at);
+    `,
+  },
 ];
 
 export async function migrate(db: Db): Promise<number[]> {

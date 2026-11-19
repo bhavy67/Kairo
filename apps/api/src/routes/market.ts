@@ -22,6 +22,7 @@ export const marketRoutes =
     app.get("/watchlist", async () => ({ items: await ctx.market.watchlist() }));
 
     app.post("/watchlist", async (req, reply) => {
+      ctx.assertWrite(req.session);
       const body = AddWatch.safeParse(req.body);
       if (!body.success) throw new AppError(400, "bad_request", "Provide a valid NSE symbol.");
       if (!(await ctx.market.symbolExists(body.data.symbol))) {
@@ -32,6 +33,7 @@ export const marketRoutes =
     });
 
     app.delete("/watchlist/:symbol", async (req, reply) => {
+      ctx.assertWrite(req.session);
       const p = z.object({ symbol: Symbol }).safeParse(req.params);
       if (!p.success) throw new AppError(400, "bad_request", "Invalid symbol.");
       if (!(await ctx.market.removeWatch(p.data.symbol))) throw new AppError(404, "not_found", "Not on the watchlist.");

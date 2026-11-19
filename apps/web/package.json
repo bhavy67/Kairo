@@ -4,18 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "API_URL=${API_URL:-http://127.0.0.1:4000} next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
     "test": "echo \"no web tests yet\""
   },
   "dependencies": {
+    "@kairo/api": "workspace:*",
     "@kairo/core": "workspace:*",
     "@tanstack/react-query": "^5.108.0",
     "next": "^16.4.6",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

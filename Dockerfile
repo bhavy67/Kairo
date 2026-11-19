@@ -10,6 +10,8 @@ COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
+# Docker serves /api through the standalone API container (see next.config.ts).
+ENV API_URL=http://api:4000
 RUN pnpm build && pnpm deploy --filter @kairo/api --prod --legacy /out/api
 
 FROM node:22-alpine AS api

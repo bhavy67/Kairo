@@ -1,11 +1,10 @@
 import type { FastifyBaseLogger } from "fastify";
 import type { Db } from "../db/db.js";
-import { backfill, refreshConstituents } from "./ingest.js";
+import { runEodJob } from "./ingest.js";
 import type { NseArchive } from "./nse-archive.js";
 
 const TICK_MS = 15 * 60_000;
 const CATCH_UP_DAYS = 10;
-const CONSTITUENTS_MAX_AGE_DAYS = 7;
 
 /**
  * In-process scheduler. Each tick: refresh constituents if stale, then fill any
@@ -22,12 +21,7 @@ export function startScheduler(db: Db, nse: NseArchive, log: FastifyBaseLogger, 
     if (running) return;
     running = true;
     try {
-      const [{ stale }] = await db.query<{ stale: boolean }>(
-        `select coalesce(max(updated_at) < now() - make_interval(days => $1), true) as stale from instruments`,
-        [CONSTITUENTS_MAX_AGE_DAYS],
-      ) as [{ stale: boolean }];
-      if (stale) log.info({ count: await refreshConstituents(db, nse) }, "constituents refreshed");
-      await backfill(db, nse, { days: CATCH_UP_DAYS, now: now(), log });
+      await runEodJob(db, nse, { days: CATCH_UP_DAYS, now: now(), log });
     } catch (err) {
       log.error({ err }, "scheduler tick failed");
     } finally {
