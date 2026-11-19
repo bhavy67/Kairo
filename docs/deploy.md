@@ -4,7 +4,7 @@ Kairo runs in two shapes from the same code.
 
 | | Vercel (current) | Docker / VPS |
 |---|---|---|
-| `/api` | `apps/web/src/app/api/[...path]` runs Fastify in-process | Next.js proxies to the API container (`API_URL`) |
+| `/api` | `apps/web/src/pages/api/[...path].ts` hands Node req/res to Fastify in-process | Next.js proxies to the API container (`API_URL`) |
 | Daily NSE import | Vercel Cron → `GET /api/cron/eod` (19:00 IST, Mon–Fri) | In-process scheduler, every 15 min |
 | Database | Supabase Postgres via the pooler | Postgres container |
 | Kite orders (Phase 5) | Not possible: no static IP | Possible with a registered static IP |

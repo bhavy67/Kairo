@@ -1,4 +1,3 @@
-import "server-only";
 import { buildApp, loadConfig, openDb } from "@kairo/api";
 
 type App = Awaited<ReturnType<typeof buildApp>>;

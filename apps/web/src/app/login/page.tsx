@@ -10,7 +10,7 @@ const ERRORS: Record<string, string> = {
 };
 
 function LoginInner() {
-  const error = useSearchParams().get("error");
+  const error = useSearchParams()?.get("error");
   return (
     <div className="center">
       <div className="stack" style={{ maxWidth: 360 }}>
