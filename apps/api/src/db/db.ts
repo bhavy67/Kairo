@@ -18,9 +18,16 @@ export interface Db {
   close(): Promise<void>;
 }
 
-export function pgDb(connectionString: string, { max = 5 }: { max?: number } = {}): Db {
+export function pgDb(connectionString: string, { max = 5, ca }: { max?: number; ca?: string | undefined } = {}): Db {
   // Serverless: keep the per-instance pool tiny and let the provider's pooler fan in.
-  const pool = new pg.Pool({ connectionString, max, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 10_000 });
+  // With a CA, verify the server certificate fully; otherwise sslmode in the URL decides.
+  const pool = new pg.Pool({
+    connectionString,
+    max,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+    ...(ca ? { ssl: { ca, rejectUnauthorized: true } } : {}),
+  });
   const wrap = (client: pg.Pool | pg.PoolClient): Omit<Db, "tx" | "close"> => ({
     async query<T extends object>(sql: string, params: unknown[] = []) {
       return (await client.query(sql, params)).rows as T[];

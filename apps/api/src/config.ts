@@ -8,7 +8,11 @@ const Env = z
     /** "demo" serves a fake portfolio with no broker; "kite" talks to Zerodha. */
     DATA_MODE: z.enum(["demo", "kite"]).default("demo"),
     /** Where the browser lands after login (the web app). */
-    WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    // On Vercel, default to the project's production domain (a system env var).
+    WEB_ORIGIN: z
+      .string()
+      .url()
+      .default(process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
     SESSION_SECRET: z.string().min(32).optional(),
     KITE_API_KEY: z.string().min(1).optional(),
     KITE_API_SECRET: z.string().min(1).optional(),
@@ -17,6 +21,8 @@ const Env = z
     AMFI_NAV_URL: z.string().url().default("https://portal.amfiindia.com/spages/NAVAll.txt"),
     /** Postgres URL. Unset: an embedded PGlite database under DATA_DIR (dev only). */
     DATABASE_URL: z.string().url().optional(),
+    /** PEM of the database server's CA. Set it to verify the server certificate (verify-full). */
+    DATABASE_CA_CERT: z.string().optional(),
     DATA_DIR: z.string().default(".data"),
     NSE_ARCHIVE_URL: z.string().url().default("https://nsearchives.nseindia.com"),
     /** Run the in-process EOD scheduler. Off in tests and one-off CLI runs. */
