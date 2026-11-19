@@ -43,7 +43,7 @@ export const signalsRoutes =
       return run(rule.data);
     });
 
-    app.get("/screens", async () => ({ screens: await repo.screens() }));
+    app.get("/screens", async () => ({ screens: ctx.publicDemo ? [] : await repo.screens() }));
 
     app.post("/screens", async (req, reply) => {
       ctx.assertWrite(req.session);
@@ -55,6 +55,7 @@ export const signalsRoutes =
 
     app.get("/screens/:id/run", async (req) => {
       const { id } = Id.parse(req.params);
+      if (ctx.publicDemo) throw new AppError(404, "not_found", "No such screen.");
       const screen = await repo.screen(id);
       if (!screen) throw new AppError(404, "not_found", "No such screen.");
       return run(screen.rule);
@@ -67,7 +68,11 @@ export const signalsRoutes =
       return reply.status(204).send();
     });
 
-    app.get("/alerts", async () => ({ alerts: await repo.alerts(), events: await repo.events(), channel: ctx.notifier?.name ?? null }));
+    app.get("/alerts", async () =>
+      ctx.publicDemo
+        ? { alerts: [], events: [], channel: null }
+        : { alerts: await repo.alerts(), events: await repo.events(), channel: ctx.notifier?.name ?? null },
+    );
 
     app.post("/alerts", async (req, reply) => {
       ctx.assertWrite(req.session);

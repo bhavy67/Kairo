@@ -64,6 +64,24 @@ import day ─► corporate actions ─► computeIndicators (adjusted, one SQL 
 - **Screens** are JSON rules validated against a field whitelist and evaluated in TypeScript. "Stocks of the day" are six preset rules, each with a plain-language reason.
 - **Alerts**: price crosses, big moves, 200-day crosses, and new entrants to saved screens. They are evaluated after each import. Events are idempotent per day, and one Telegram digest goes out per run.
 
+## Returns from the tradebook (ADR 8)
+
+```
+Console CSV ─► parseTradebook ─► trades (unique per exchange/date/symbol/trade id)
+                                   │
+ISIN → NSE symbol ─► matchLots (corporate actions → intraday netting → FIFO) ─► summarizeTrades
+                                                                                  │  + Kite holdings (prices, quantities)
+                                                        XIRR · realised by FY · unrealised · reconciliation
+```
+
+## Deployments (ADR 9)
+
+| | kairo.bhavyladani.in | kairo-demo.bhavyladani.in |
+|---|---|---|
+| Mode | Kite, behind login | Demo portfolio, sample tradebook |
+| DB role | `kairo_app` (owner) | `kairo_demo` (SELECT on market tables, read-only transactions) |
+| Cron | Imports NSE data, computes indicators, sends alerts | None |
+
 ## Known limits (deliberate for now)
 
 | Limit | Why it is acceptable now | When it changes |

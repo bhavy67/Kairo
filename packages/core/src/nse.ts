@@ -190,3 +190,20 @@ export function parseCorporateActions(csv: string): CorporateAction[] {
     return { symbol, exDate, purpose, ratio: actionRatio(purpose) };
   });
 }
+
+/**
+ * The two share-count effects of an action, kept apart because Indian tax treats
+ * them differently: a split rescales existing lots (same date, cost spread);
+ * bonus shares are a new lot with zero cost, acquired on the allotment date.
+ */
+export function actionParts(purpose: string): { split: number | null; bonus: number | null } {
+  const p = purpose.toUpperCase();
+  const b = /BONUS\s*(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)/.exec(p);
+  const bonus = b ? (Number(b[1]) + Number(b[2])) / Number(b[2]) : null;
+  let split: number | null = null;
+  if (/SPLI?T|SUB-?DIVISION|CONSOLIDAT/.test(p)) {
+    const fv = /FRO?M\s*(?:RS|RE|INR|₹)?\.?\s*(\d+(?:\.\d+)?)\D*?TO\s*(?:RS|RE|INR|₹)?\.?\s*(\d+(?:\.\d+)?)/.exec(p);
+    if (fv && Number(fv[2]) > 0) split = Number(fv[1]) / Number(fv[2]);
+  }
+  return { split: split === 1 ? null : split, bonus: bonus === 1 ? null : bonus };
+}

@@ -17,6 +17,11 @@ const Env = z
     DATABASE_URL: z.string().url().optional(),
     /** PEM of the database server's CA. Set it to verify the server certificate (verify-full). */
     DATABASE_CA_CERT: z.string().optional(),
+    /**
+     * The database login can only read market data (public demo). Skips migrations
+     * and every write path; personal tables are not even readable by that role.
+     */
+    DATABASE_READ_ONLY: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
     DATA_DIR: z.string().default(".data"),
     NSE_ARCHIVE_URL: z.string().url().default("https://nsearchives.nseindia.com"),
     /** Bearer token Vercel Cron (or any scheduler) sends to /api/cron/*. Unset disables the route. */

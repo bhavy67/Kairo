@@ -155,6 +155,9 @@ code { font-family: var(--mono); font-size: 12px; background: var(--page); paddi
 .saved > li { border-bottom: 1px solid var(--line); padding: 6px 0; }
 .saved > li:last-child { border-bottom: 0; }
 
+.notes { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--ink-2); }
+input[type="file"] { font: inherit; color: var(--ink-2); max-width: 100%; }
+
 @media (max-width: 640px) {
   .barlist li { grid-template-columns: 110px 1fr 40px; }
   .topbar { flex-wrap: wrap; height: auto; padding: 12px 0; row-gap: 8px; }

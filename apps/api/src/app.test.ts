@@ -197,3 +197,64 @@ describe("cron route", () => {
     expect((await app.inject({ url: "/api/cron/eod", headers: { authorization: "Bearer nope" } })).statusCode).toBe(401);
   });
 });
+
+describe("tradebook import", () => {
+  const HEADER = "symbol,isin,trade_date,exchange,segment,series,trade_type,auction,quantity,price,trade_id,order_id,order_execution_time";
+  const CSV = `${HEADER}
+INFY,INE009A01021,2025-01-10,NSE,EQ,EQ,buy,false,2,1500,T1,O1,2025-01-10T09:20:00
+INFY,INE009A01021,2025-02-10,BSE,EQ,A,buy,false,1,1600,T2,O2,2025-02-10T09:20:00
+INFY,INE009A01021,2025-06-10,NSE,EQ,EQ,sell,false,1,1700,T3,O3,2025-06-10T10:00:00
+`;
+  const upload = (body: string, sid: string) =>
+    app.inject({ method: "POST", url: "/api/trades/import", headers: { "content-type": "text/csv", "x-filename": "tradebook.csv" }, payload: body, cookies: { kairo_sid: sid } });
+
+  it("imports idempotently, matches with Kite holdings and reports gains", async () => {
+    const { fetchImpl } = fakeKite();
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, now: () => Date.parse("2026-01-15T10:00:00Z"), logger: false });
+    const { sid } = await signIn(fetchImpl);
+
+    const first = await upload(CSV, sid!);
+    expect(first.statusCode).toBe(201);
+    expect(first.json()).toMatchObject({ parsed: 3, inserted: 3, duplicates: 0 });
+    expect((await upload(CSV, sid!)).json()).toMatchObject({ inserted: 0, duplicates: 3 });
+
+    const { summary, sample } = (await app.inject({ url: "/api/trades/summary", cookies: { kairo_sid: sid! } })).json();
+    expect(sample).toBe(false);
+    expect(summary.coverage).toEqual({ from: "2025-01-10", to: "2025-06-10", trades: 3 });
+    expect(summary.realized).toBe(200); // sold 1 of the oldest lot: 1700 − 1500
+    const infy = summary.positions.find((p: { key: string }) => p.key === "INFY");
+    // BSE and NSE buys form one position; Kite's fake LTP is 120 and it reports 3 shares.
+    expect(infy).toMatchObject({ openQuantity: 2, currentPrice: 120, brokerQuantity: 3 });
+    expect(summary.mismatches).toEqual([{ key: "INFY", tradebook: 2, broker: 3 }]);
+  });
+
+  it("rejects files that are not a tradebook, and requires a session", async () => {
+    const { fetchImpl } = fakeKite();
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    expect((await app.inject({ method: "POST", url: "/api/trades/import", headers: { "content-type": "text/csv" }, payload: CSV })).statusCode).toBe(401);
+    const { sid } = await signIn(fetchImpl);
+    const bad = await upload("name,amount\nfoo,1\n", sid!);
+    expect(bad.statusCode).toBe(400);
+    expect(bad.json().message).toMatch(/Missing columns/);
+  });
+});
+
+describe("public demo (read-only database)", () => {
+  it("never serves personal data and shows a sample tradebook", async () => {
+    const db = await testDb();
+    // Personal rows that must stay invisible to the demo.
+    await db.query("insert into watchlist_items (symbol) values ('SECRET')");
+    await db.query("insert into alerts (symbol, kind, threshold) values ('SECRET', 'price_above', 1)");
+    app = await buildApp({ db, config: loadConfig({ NODE_ENV: "production", DATABASE_READ_ONLY: "true" }), logger: false });
+
+    expect((await app.inject("/api/watchlist")).json()).toEqual({ items: [] });
+    expect((await app.inject("/api/alerts")).json()).toMatchObject({ alerts: [], events: [] });
+    expect((await app.inject("/api/screens")).json()).toEqual({ screens: [] });
+    const t = (await app.inject("/api/trades/summary")).json();
+    expect(t.sample).toBe(true);
+    expect(t.summary.mismatches).toEqual([]); // sample lots reconcile with the demo holdings
+    expect((await app.inject({ method: "POST", url: "/api/trades/import", headers: { "content-type": "text/csv" }, payload: "x" })).statusCode).toBe(403);
+    // No snapshot yet: a read-only reader serves an empty overview instead of trying to compute one.
+    expect((await app.inject("/api/market/overview")).json()).toMatchObject({ asOf: null });
+  });
+});

@@ -47,6 +47,23 @@ Repeat until the response says `"more": false`.
 3. In Vercel → Settings → Environment Variables add `KITE_API_KEY`, `KITE_API_SECRET` (sensitive), `KITE_ALLOWED_USER_ID`, and set `DATA_MODE=kite`.
 4. Redeploy.
 
+## Public demo
+
+Second Vercel project `kairo-demo` (same repo, root `apps/web`) at https://kairo-demo.bhavyladani.in. See ADR 9.
+
+| Key | Value |
+|---|---|
+| `DATABASE_URL` | Pooler URL for the read-only role `kairo_demo` |
+| `DATABASE_READ_ONLY` | `true` |
+| `DATA_MODE` | `demo` |
+
+Do not set `CRON_SECRET`, Kite keys or Telegram on the demo. When a migration adds a market-data table, grant it:
+
+```sql
+set role kairo_app;
+grant select on kairo.<new_table> to kairo_demo;
+```
+
 ## Docker / VPS
 
 ```bash

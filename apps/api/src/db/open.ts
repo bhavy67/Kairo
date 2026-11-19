@@ -13,6 +13,7 @@ export async function openDb(config: Config): Promise<Db> {
     mkdirSync(dir, { recursive: true });
     db = await pgliteDb(dir);
   }
-  await migrate(db);
+  // A read-only role cannot run DDL; the owning deployment migrates the schema.
+  if (!config.DATABASE_READ_ONLY) await migrate(db);
   return db;
 }

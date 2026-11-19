@@ -222,6 +222,40 @@ const MIGRATIONS: { id: number; name: string; sql: string }[] = [
       delete from market_snapshots;
     `,
   },
+  {
+    id: 7,
+    name: "trades",
+    sql: `
+      -- Imported tradebook rows. The unique key makes re-importing an overlapping
+      -- export a no-op for rows already present.
+      create table trades (
+        id          bigserial primary key,
+        trade_id    text not null,
+        order_id    text,
+        exchange    text not null,
+        symbol      text not null,
+        isin        text not null,
+        trade_date  date not null,
+        side        text not null check (side in ('buy', 'sell')),
+        quantity    double precision not null check (quantity > 0),
+        price       double precision not null check (price >= 0),
+        -- Local exchange time as exported (IST, no zone); used only to order same-day trades.
+        executed_at text,
+        imported_at timestamptz not null default now(),
+        unique (exchange, trade_date, symbol, trade_id)
+      );
+      create index trades_date_idx on trades (trade_date);
+
+      create table trade_imports (
+        id         bigserial primary key,
+        filename   text,
+        rows       integer not null,
+        inserted   integer not null,
+        skipped    integer not null,
+        created_at timestamptz not null default now()
+      );
+    `,
+  },
 ];
 
 export async function migrate(db: Db): Promise<number[]> {

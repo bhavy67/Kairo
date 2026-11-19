@@ -19,7 +19,7 @@ export const marketRoutes =
 
     app.get("/market/ingest", async () => ({ runs: await ctx.market.ingestRuns() }));
 
-    app.get("/watchlist", async () => ({ items: await ctx.market.watchlist() }));
+    app.get("/watchlist", async () => ({ items: ctx.publicDemo ? [] : await ctx.market.watchlist() }));
 
     app.post("/watchlist", async (req, reply) => {
       ctx.assertWrite(req.session);

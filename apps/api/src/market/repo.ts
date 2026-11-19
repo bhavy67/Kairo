@@ -29,7 +29,14 @@ export class MarketRepo {
    */
   private cached: { asOf: string; value: Promise<MarketOverview> } | null = null;
 
-  constructor(private readonly db: Db) {}
+  private readonly readOnly: boolean;
+
+  constructor(
+    private readonly db: Db,
+    { readOnly = false }: { readOnly?: boolean } = {},
+  ) {
+    this.readOnly = readOnly;
+  }
 
   async latestDate(): Promise<string | null> {
     const [r] = await this.db.query<{ d: string | null }>("select max(date)::text as d from daily_bars");
@@ -37,7 +44,9 @@ export class MarketRepo {
   }
 
   async overview(): Promise<MarketOverview> {
-    const asOf = await this.latestDate();
+    // A read-only reader cannot compute snapshots, so it serves the newest one that exists.
+    // (Between an import committing and its snapshot landing, that is the previous day.)
+    const asOf = this.readOnly ? await this.latestSnapshotDate() : await this.latestDate();
     if (!asOf) return { asOf: null, indices: [], breadth: null, sectors: [], gainers: [], losers: [], volumeSpikes: [] };
     if (this.cached?.asOf !== asOf) {
       // Cache the promise, not the value: concurrent first requests share one query.
@@ -48,6 +57,11 @@ export class MarketRepo {
       });
     }
     return this.cached.value;
+  }
+
+  private async latestSnapshotDate(): Promise<string | null> {
+    const [r] = await this.db.query<{ d: string | null }>("select max(date)::text as d from market_snapshots where universe = $1", [UNIVERSE]);
+    return r?.d ?? null;
   }
 
   private async snapshot(asOf: string): Promise<MarketOverview> {

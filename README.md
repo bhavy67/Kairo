@@ -6,7 +6,7 @@ A personal market desk for an Indian retail investor: portfolio, markets and sig
 
 ![status](https://img.shields.io/badge/phase-4%20·%20signals-0b0b0b)
 
-Live demo: https://kairo.bhavyladani.in (demo portfolio, real NSE end-of-day data)
+Live demo: https://kairo-demo.bhavyladani.in (demo portfolio and sample tradebook, real NSE end-of-day data). The owner's instance at kairo.bhavyladani.in is private.
 
 ## What it does today
 
@@ -14,6 +14,7 @@ Live demo: https://kairo.bhavyladani.in (demo portfolio, real NSE end-of-day dat
 - **Holdings**: equity holdings with average cost, LTP, P&L, day change and weight. Sortable.
 - **Funds**: Coin mutual fund holdings with NAV, P&L and weight.
 - **Markets** (NSE end of day): headline indices with trend, India VIX, breadth across the Nifty 500, sector heatmap, top movers and volume spikes.
+- **Returns** from your Zerodha tradebook: XIRR per stock and overall, realised P&L by financial year (short-term, long-term, intraday), FIFO lots with bonus and split handling, and reconciliation against broker holdings.
 - **Screener**: "stocks of the day" from six rule-based presets (breakouts, momentum, pullbacks, 200-day reclaims, unusual volume, oversold large caps), a rule builder, and saved screens.
 - **Alerts**: price crosses, big moves, 200-day crosses and new screen entrants, evaluated after each NSE close, with an optional Telegram digest.
 - **Watchlist** of NSE symbols with RSI, trend and 3-month return.

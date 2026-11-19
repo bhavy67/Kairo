@@ -10,6 +10,7 @@ const NAV = [
   { href: "/", label: "Overview" },
   { href: "/holdings", label: "Holdings" },
   { href: "/funds", label: "Funds" },
+  { href: "/returns", label: "Returns" },
   { href: "/markets", label: "Markets" },
   { href: "/screener", label: "Screener" },
   { href: "/watchlist", label: "Watchlist" },

@@ -1,4 +1,4 @@
-import type { AlertKind, IngestRun, MarketOverview, PortfolioSnapshot, ScreenRow, ScreenRule, WatchItem } from "@kairo/core";
+import type { AlertKind, IngestRun, MarketOverview, PortfolioSnapshot, ScreenRow, ScreenRule, TradeSummary, WatchItem } from "@kairo/core";
 
 export class ApiError extends Error {
   constructor(
@@ -81,5 +81,15 @@ export const api = {
   alerts: () => getJson<{ alerts: AlertView[]; events: AlertEvent[]; channel: string | null }>("/api/alerts"),
   addAlert: (a: { symbol: string; kind: AlertKind; threshold: number | null }) => send<{ id: number }>("/api/alerts", "POST", a),
   deleteAlert: (id: number) => send<void>(`/api/alerts/${id}`, "DELETE"),
+  trades: () => getJson<{ sample: boolean; summary: TradeSummary | null }>("/api/trades/summary"),
+  importTrades: (file: File) =>
+    file.text().then((text) =>
+      getJson<{ parsed: number; inserted: number; duplicates: number; skippedCount: number }>("/api/trades/import", {
+        method: "POST",
+        headers: { "content-type": "text/csv", "x-filename": file.name },
+        body: text,
+      }),
+    ),
+  clearTrades: () => send<void>("/api/trades", "DELETE"),
   logout: () => fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }),
 };

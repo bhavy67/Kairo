@@ -9,7 +9,7 @@ Hosting: Vercel (Mumbai) + Supabase. See [deploy.md](deploy.md).
 - [x] Holdings, mutual funds, cash, allocation
 - [x] Demo mode, tests, CI, Docker
 - [ ] Positions view (endpoint exists)
-- [ ] Tradebook CSV import → equity XIRR
+- [x] Tradebook CSV import → XIRR, realised P&L by FY, reconciliation (Phase 4.5)
 
 ## Phase 2: Indian markets (done, end-of-day)
 - [x] Postgres with migrations; PGlite for dev and tests
