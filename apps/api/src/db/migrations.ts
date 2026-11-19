@@ -91,6 +91,22 @@ const MIGRATIONS: { id: number; name: string; sql: string }[] = [
       create index sessions_expires_idx on sessions (expires_at);
     `,
   },
+  {
+    id: 3,
+    name: "market snapshots",
+    sql: `
+      -- The market overview for a trading day, computed once after import.
+      -- Reads become a primary-key lookup instead of a ~135k-row window scan,
+      -- which matters on serverless where no in-memory cache survives.
+      create table market_snapshots (
+        date        date not null,
+        universe    text not null,
+        payload     jsonb not null,
+        computed_at timestamptz not null default now(),
+        primary key (date, universe)
+      );
+    `,
+  },
 ];
 
 export async function migrate(db: Db): Promise<number[]> {

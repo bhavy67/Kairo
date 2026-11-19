@@ -33,6 +33,8 @@ export const cronRoutes =
       const started = Date.now();
       const job = await runEodJob(ctx.db, nse, { days: q.days, limit: q.limit, now: ctx.now(), delayMs: 150, log: req.log });
       const count = (s: string) => job.results.filter((r) => r.status === s).length;
+      // New data: precompute today's overview so the first visitor doesn't pay for it.
+      if (count("ok") > 0) await ctx.market.refreshSnapshot();
       return {
         ok: count("failed") === 0,
         ms: Date.now() - started,

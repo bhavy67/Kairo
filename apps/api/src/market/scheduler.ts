@@ -1,6 +1,7 @@
 import type { FastifyBaseLogger } from "fastify";
 import type { Db } from "../db/db.js";
 import { runEodJob } from "./ingest.js";
+import type { MarketRepo } from "./repo.js";
 import type { NseArchive } from "./nse-archive.js";
 
 const TICK_MS = 15 * 60_000;
@@ -14,14 +15,15 @@ const CATCH_UP_DAYS = 10;
  * One process only. With several API replicas this would move behind a
  * Postgres advisory lock or into a separate worker.
  */
-export function startScheduler(db: Db, nse: NseArchive, log: FastifyBaseLogger, now: () => number = Date.now) {
+export function startScheduler(db: Db, nse: NseArchive, market: MarketRepo, log: FastifyBaseLogger, now: () => number = Date.now) {
   let running = false;
 
   const tick = async () => {
     if (running) return;
     running = true;
     try {
-      await runEodJob(db, nse, { days: CATCH_UP_DAYS, now: now(), log });
+      const job = await runEodJob(db, nse, { days: CATCH_UP_DAYS, now: now(), log });
+      if (job.results.some((r) => r.status === "ok")) await market.refreshSnapshot();
     } catch (err) {
       log.error({ err }, "scheduler tick failed");
     } finally {

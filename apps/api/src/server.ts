@@ -2,12 +2,13 @@ import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { openDb } from "./db/open.js";
 import { NseArchive } from "./market/nse-archive.js";
+import { MarketRepo } from "./market/repo.js";
 import { startScheduler } from "./market/scheduler.js";
 
 const config = loadConfig();
 const db = await openDb(config);
 const app = await buildApp({ config, db });
-const scheduler = config.INGEST_SCHEDULE ? startScheduler(db, new NseArchive(config.NSE_ARCHIVE_URL), app.log) : null;
+const scheduler = config.INGEST_SCHEDULE ? startScheduler(db, new NseArchive(config.NSE_ARCHIVE_URL), new MarketRepo(db), app.log) : null;
 
 const shutdown = async (signal: string) => {
   app.log.info({ signal }, "shutting down");

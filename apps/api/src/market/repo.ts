@@ -52,9 +52,12 @@ const UNIVERSE_SQL = `
 
 export class MarketRepo {
   /**
-   * EOD data changes once a day, but the window query scans ~135k rows.
-   * Cache the result keyed by trading date: a new import changes max(date),
-   * which invalidates the entry without any explicit hook.
+   * Two layers, both keyed by trading date so a new import invalidates them
+   * without any explicit hook:
+   * 1. market_snapshots: computed once per day (by the import job, or by the
+   *    first reader) and shared by every instance.
+   * 2. An in-process promise, so a warm instance skips even that lookup and
+   *    concurrent cold requests share one computation.
    */
   private cached: { asOf: string; value: Promise<MarketOverview> } | null = null;
 
@@ -70,13 +73,35 @@ export class MarketRepo {
     if (!asOf) return { asOf: null, indices: [], breadth: null, sectors: [], gainers: [], losers: [], volumeSpikes: [] };
     if (this.cached?.asOf !== asOf) {
       // Cache the promise, not the value: concurrent first requests share one query.
-      const value = this.compute(asOf);
+      const value = this.snapshot(asOf);
       this.cached = { asOf, value };
       value.catch(() => {
         if (this.cached?.value === value) this.cached = null;
       });
     }
     return this.cached.value;
+  }
+
+  private async snapshot(asOf: string): Promise<MarketOverview> {
+    const [row] = await this.db.query<{ payload: MarketOverview }>(
+      "select payload from market_snapshots where date = $1 and universe = $2",
+      [asOf, UNIVERSE],
+    );
+    return row?.payload ?? this.refreshSnapshot(asOf);
+  }
+
+  /** Compute and store the overview for a day. Called by the import job after new data lands. */
+  async refreshSnapshot(asOf?: string): Promise<MarketOverview> {
+    const date = asOf ?? (await this.latestDate());
+    if (!date) return { asOf: null, indices: [], breadth: null, sectors: [], gainers: [], losers: [], volumeSpikes: [] };
+    const overview = await this.compute(date);
+    await this.db.query(
+      `insert into market_snapshots (date, universe, payload) values ($1, $2, $3::jsonb)
+       on conflict (date, universe) do update set payload = excluded.payload, computed_at = now()`,
+      [date, UNIVERSE, JSON.stringify(overview)],
+    );
+    if (this.cached?.asOf === date) this.cached = { asOf: date, value: Promise.resolve(overview) };
+    return overview;
   }
 
   private async compute(asOf: string): Promise<MarketOverview> {

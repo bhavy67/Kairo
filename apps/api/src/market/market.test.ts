@@ -126,6 +126,15 @@ describe("backfill and overview", () => {
     expect(o.indices[0]).toMatchObject({ name: "Nifty 50", close: 20259 });
     expect(o.indices[0].history).toHaveLength(60);
 
+    // The first read stored a snapshot; a fresh instance serves it without recomputing.
+    const [snap] = await db.query<{ n: number }>("select count(*)::int as n from market_snapshots");
+    expect(snap!.n).toBe(1);
+    await db.query("delete from index_members"); // would empty the universe if recomputed
+    const other = await buildApp({ db, config: loadConfig({ NODE_ENV: "test" }), logger: false });
+    expect((await other.inject("/api/market/overview")).json().breadth.advances).toBe(1);
+    await other.close();
+    await refreshConstituents(db, nse);
+
     // Watchlist validates against the latest bhavcopy.
     expect((await app.inject({ method: "POST", url: "/api/watchlist", payload: { symbol: "up" } })).statusCode).toBe(201);
     expect((await app.inject({ method: "POST", url: "/api/watchlist", payload: { symbol: "NOPE" } })).statusCode).toBe(404);
