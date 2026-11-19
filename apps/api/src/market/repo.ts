@@ -51,6 +51,13 @@ const UNIVERSE_SQL = `
   where w.date = $1::date`;
 
 export class MarketRepo {
+  /**
+   * EOD data changes once a day, but the window query scans ~135k rows.
+   * Cache the result keyed by trading date: a new import changes max(date),
+   * which invalidates the entry without any explicit hook.
+   */
+  private cached: { asOf: string; value: Promise<MarketOverview> } | null = null;
+
   constructor(private readonly db: Db) {}
 
   async latestDate(): Promise<string | null> {
@@ -61,6 +68,18 @@ export class MarketRepo {
   async overview(): Promise<MarketOverview> {
     const asOf = await this.latestDate();
     if (!asOf) return { asOf: null, indices: [], breadth: null, sectors: [], gainers: [], losers: [], volumeSpikes: [] };
+    if (this.cached?.asOf !== asOf) {
+      // Cache the promise, not the value: concurrent first requests share one query.
+      const value = this.compute(asOf);
+      this.cached = { asOf, value };
+      value.catch(() => {
+        if (this.cached?.value === value) this.cached = null;
+      });
+    }
+    return this.cached.value;
+  }
+
+  private async compute(asOf: string): Promise<MarketOverview> {
     const [rows, indices] = await Promise.all([
       this.db.query<UniverseRow>(UNIVERSE_SQL, [asOf, UNIVERSE]),
       this.indices(asOf),
