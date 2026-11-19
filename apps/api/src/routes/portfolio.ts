@@ -1,4 +1,4 @@
-import { summarize, valueFunds, valueHoldings, type PortfolioSnapshot } from "@kairo/core";
+import { sectorAllocation, summarize, valueFunds, valueHoldings, type PortfolioSnapshot } from "@kairo/core";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../app.js";
@@ -14,8 +14,10 @@ export const portfolioRoutes =
     app.get("/portfolio", async (req, reply): Promise<PortfolioSnapshot> => {
       const provider = ctx.providerFor(req.session);
       const [holdings, funds, cash] = await Promise.all([provider.holdings(), provider.fundHoldings(), provider.funds()]);
+      const sectorByIsin = await ctx.market.sectorsByIsin(holdings.map((h) => h.isin));
       reply.header("cache-control", "no-store");
       return {
+        sectors: sectorAllocation(holdings, sectorByIsin),
         asOf: new Date().toISOString(),
         summary: summarize(holdings, funds),
         cash,

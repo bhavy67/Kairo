@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { sessionChecksum } from "./kite/client.js";
+import { testDb } from "./test-db.js";
 import { nextKiteExpiry } from "./session.js";
 
 const KITE_ENV = {
@@ -78,7 +79,7 @@ describe("config", () => {
 
 describe("demo mode", () => {
   it("serves a portfolio without login", async () => {
-    app = await buildApp({ config: loadConfig({ NODE_ENV: "test" }), logger: false });
+    app = await buildApp({ db: await testDb(), config: loadConfig({ NODE_ENV: "test" }), logger: false });
     const res = await app.inject("/api/portfolio");
     expect(res.statusCode).toBe(200);
     expect(res.json().holdings.length).toBeGreaterThan(0);
@@ -88,7 +89,7 @@ describe("demo mode", () => {
 describe("kite auth flow", () => {
   it("signs in, then serves holdings with the session token", async () => {
     const { fetchImpl, calls } = fakeKite();
-    app = await buildApp({ config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
 
     const { kiteUrl, cb, sid } = await signIn(fetchImpl);
     expect(kiteUrl.host).toBe("kite.zerodha.com");
@@ -105,14 +106,14 @@ describe("kite auth flow", () => {
   });
 
   it("rejects requests without a session", async () => {
-    app = await buildApp({ config: loadConfig(KITE_ENV), fetch: fakeKite().fetchImpl, logger: false });
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fakeKite().fetchImpl, logger: false });
     expect((await app.inject("/api/portfolio")).statusCode).toBe(401);
     expect((await app.inject("/api/auth/me")).statusCode).toBe(401);
   });
 
   it("rejects a mismatched oauth state", async () => {
     const { fetchImpl, calls } = fakeKite();
-    app = await buildApp({ config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
     const { cb, sid } = await signIn(fetchImpl, "forged-state");
     expect(cb.headers.location).toContain("error=state");
     expect(sid).toBeUndefined();
@@ -121,7 +122,7 @@ describe("kite auth flow", () => {
 
   it("rejects and revokes a token for any other Kite user", async () => {
     const { fetchImpl, calls } = fakeKite({ "POST /session/token": () => ok({ user_id: "ZZ9999", access_token: "t2" }) });
-    app = await buildApp({ config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
     const { cb, sid } = await signIn(fetchImpl);
     expect(cb.headers.location).toContain("error=forbidden");
     expect(sid).toBeUndefined();
@@ -132,7 +133,7 @@ describe("kite auth flow", () => {
     const { fetchImpl } = fakeKite({
       "GET /portfolio/holdings": () => ({ status: "error", message: "expired", error_type: "TokenException" }),
     });
-    app = await buildApp({ config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
     const { sid } = await signIn(fetchImpl);
     const res = await app.inject({ url: "/api/portfolio", cookies: { kairo_sid: sid! } });
     expect(res.statusCode).toBe(401);
@@ -143,7 +144,7 @@ describe("kite auth flow", () => {
 
   it("returns 502 when Kite changes a field type", async () => {
     const { fetchImpl } = fakeKite({ "GET /portfolio/holdings": () => ok([{ tradingsymbol: 1 }]) });
-    app = await buildApp({ config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
     const { sid } = await signIn(fetchImpl);
     const res = await app.inject({ url: "/api/portfolio", cookies: { kairo_sid: sid! } });
     expect(res.statusCode).toBe(502);

@@ -1,6 +1,8 @@
 import cookie from "@fastify/cookie";
 import Fastify, { type FastifyInstance } from "fastify";
 import { AmfiNavService } from "./amfi.js";
+import type { Db } from "./db/db.js";
+import { MarketRepo } from "./market/repo.js";
 import type { Config } from "./config.js";
 import { AppError } from "./errors.js";
 import { KiteClient, type Fetch } from "./kite/client.js";
@@ -8,6 +10,7 @@ import { demoProvider } from "./providers/demo.js";
 import { kiteProvider } from "./providers/kite.js";
 import type { PortfolioProvider } from "./providers/types.js";
 import { authRoutes } from "./routes/auth.js";
+import { marketRoutes } from "./routes/market.js";
 import { portfolioRoutes } from "./routes/portfolio.js";
 import { SessionStore, type Session } from "./session.js";
 
@@ -21,6 +24,7 @@ export const SESSION_COOKIE = "kairo_sid";
 
 export interface Deps {
   config: Config;
+  db: Db;
   fetch?: Fetch;
   now?: () => number;
   logger?: boolean;
@@ -31,11 +35,15 @@ export interface AppContext {
   kite: KiteClient | null;
   sessions: SessionStore;
   amfi: AmfiNavService;
+  db: Db;
+  market: MarketRepo;
+  /** Throws 401 unless the request may see private data (always true in demo mode). */
+  assertAccess(session: Session | undefined): void;
   /** Resolves the provider for a request, or throws 401 when a Kite session is required. */
   providerFor(session: Session | undefined): PortfolioProvider;
 }
 
-export async function buildApp({ config, fetch: fetchImpl = fetch, now = Date.now, logger = true }: Deps): Promise<FastifyInstance> {
+export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Date.now, logger = true }: Deps): Promise<FastifyInstance> {
   const app = Fastify({
     logger: logger && {
       level: config.NODE_ENV === "production" ? "info" : "debug",
@@ -56,10 +64,14 @@ export async function buildApp({ config, fetch: fetchImpl = fetch, now = Date.no
     kite,
     sessions,
     amfi: new AmfiNavService(config.AMFI_NAV_URL, fetchImpl, now),
+    db,
+    market: new MarketRepo(db),
+    assertAccess(session) {
+      if (kite && !session) throw new AppError(401, "unauthenticated", "Sign in with Kite to continue.");
+    },
     providerFor(session) {
-      if (!kite) return demo;
-      if (!session) throw new AppError(401, "unauthenticated", "Sign in with Kite to continue.");
-      return kiteProvider(kite, session.accessToken);
+      ctx.assertAccess(session);
+      return kite ? kiteProvider(kite, session!.accessToken) : demo;
     },
   };
 
@@ -88,9 +100,17 @@ export async function buildApp({ config, fetch: fetchImpl = fetch, now = Date.no
     return reply.status(500).send({ error: "internal", message: "Something went wrong." });
   });
 
-  app.get("/api/health", async () => ({ status: "ok", mode: config.DATA_MODE }));
+  app.get("/api/health", async (_req, reply) => {
+    try {
+      await db.query("select 1");
+      return { status: "ok", mode: config.DATA_MODE, db: "ok" };
+    } catch {
+      return reply.status(503).send({ status: "degraded", mode: config.DATA_MODE, db: "down" });
+    }
+  });
   await app.register(authRoutes(ctx), { prefix: "/api/auth" });
   await app.register(portfolioRoutes(ctx), { prefix: "/api" });
+  await app.register(marketRoutes(ctx), { prefix: "/api" });
 
   return app;
 }

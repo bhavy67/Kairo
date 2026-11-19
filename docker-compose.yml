@@ -1,10 +1,26 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kairo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kairo}
+      POSTGRES_DB: kairo
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kairo"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
   api:
     build: { context: ., target: api }
     env_file: .env
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
+      DATABASE_URL: postgres://kairo:${POSTGRES_PASSWORD:-kairo}@db:5432/kairo
+    depends_on:
+      db: { condition: service_healthy }
     restart: unless-stopped
     # Not published: only the web container talks to it.
     expose: ["4000"]
@@ -18,3 +34,6 @@ services:
     ports: ["127.0.0.1:3000:3000"]
     depends_on: [api]
     restart: unless-stopped
+
+volumes:
+  pgdata:

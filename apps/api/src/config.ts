@@ -14,7 +14,13 @@ const Env = z
     KITE_API_SECRET: z.string().min(1).optional(),
     /** Only this Kite user may sign in. The app is single-user by design. */
     KITE_ALLOWED_USER_ID: z.string().min(1).optional(),
-    AMFI_NAV_URL: z.string().url().default("https://www.amfiindia.com/spages/NAVAll.txt"),
+    AMFI_NAV_URL: z.string().url().default("https://portal.amfiindia.com/spages/NAVAll.txt"),
+    /** Postgres URL. Unset: an embedded PGlite database under DATA_DIR (dev only). */
+    DATABASE_URL: z.string().url().optional(),
+    DATA_DIR: z.string().default(".data"),
+    NSE_ARCHIVE_URL: z.string().url().default("https://nsearchives.nseindia.com"),
+    /** Run the in-process EOD scheduler. Off in tests and one-off CLI runs. */
+    INGEST_SCHEDULE: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   })
   .superRefine((env, ctx) => {
     if (env.DATA_MODE !== "kite") return;
