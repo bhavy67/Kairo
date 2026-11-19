@@ -11,6 +11,8 @@ Kairo runs in two shapes from the same code.
 
 ## Vercel
 
+Crons (`apps/web/vercel.json`): `/api/cron/eod` 19:00 IST Mon–Fri, `/api/cron/global` 08:10 IST Tue–Sat.
+
 Project `kairo` (root directory `apps/web`, region `bom1` Mumbai), deployed on every push to `main`. Production domain: https://kairo.bhavyladani.in. Redirects after login are relative, so any domain works without configuration. Settings live in `apps/web/vercel.json`.
 
 ### Environment variables
@@ -23,6 +25,7 @@ Project `kairo` (root directory `apps/web`, region `bom1` Mumbai), deployed on e
 | `CRON_SECRET` | Vercel Cron sends it as a bearer token. |
 | `DATA_MODE` | `demo` (public, read-only) or `kite`. |
 | `KITE_API_KEY`, `KITE_API_SECRET`, `KITE_ALLOWED_USER_ID` | Only for `DATA_MODE=kite`. |
+| `FRED_RELAY_URL`, `FRED_RELAY_TOKEN` | FRED relay (Supabase Edge Function `fred-relay`), because FRED blocks Vercel's Mumbai region. See ADR 10. |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Optional. Alert digest after each import. Create a bot with @BotFather, message it once, then read your chat id from `https://api.telegram.org/bot<token>/getUpdates`. |
 
 ### Database

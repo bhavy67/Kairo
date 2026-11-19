@@ -7,6 +7,11 @@ export interface GlobalSources {
   fredUrl: string;
   fxUrl: string;
   fetch: Fetch;
+  /**
+   * Optional relay for FRED (a Supabase Edge Function): FRED drops connections
+   * from some cloud ranges, Vercel's Mumbai region among them. See ADR 10.
+   */
+  fredRelay?: { url: string; token: string } | undefined;
 }
 
 export interface GlobalJobResult {
@@ -18,8 +23,8 @@ export interface GlobalJobResult {
 const HISTORY_DAYS = 400;
 const OVERLAP_DAYS = 10; // re-read recent days: sources revise and back-fill late prints
 
-async function getText(f: Fetch, url: string): Promise<string> {
-  const res = await f(url, { headers: { "User-Agent": "kairo/0.1 (personal dashboard)" }, signal: AbortSignal.timeout(20_000) });
+async function getText(f: Fetch, url: string, extra: Record<string, string> = {}): Promise<string> {
+  const res = await f(url, { headers: { "User-Agent": "kairo/0.1 (personal dashboard)", ...extra }, signal: AbortSignal.timeout(20_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
@@ -56,7 +61,10 @@ export async function runGlobalJob(db: Db, src: GlobalSources, now: number = Dat
   await Promise.all(
     fred.map(async (s) => {
       try {
-        const csv = await getText(src.fetch, `${src.fredUrl}/graph/fredgraph.csv?id=${s.code}&cosd=${start.get(s.id)}`);
+        const query = `id=${s.code}&cosd=${start.get(s.id)}`;
+        const csv = src.fredRelay
+          ? await getText(src.fetch, `${src.fredRelay.url}?${query}`, { "x-relay-token": src.fredRelay.token })
+          : await getText(src.fetch, `${src.fredUrl}/graph/fredgraph.csv?${query}`);
         result.rows += await upsert(db, s.id, parseFredCsv(csv));
         result.ok.push(s.id);
       } catch (err) {

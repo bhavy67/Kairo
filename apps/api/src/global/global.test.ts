@@ -33,6 +33,26 @@ beforeEach(async () => {
 });
 afterEach(async () => db.close());
 
+describe("FRED relay", () => {
+  it("sends FRED requests through the relay with its token, never directly", async () => {
+    const { src, urls } = fakeSources();
+    const seen: { url: string; token: string | null }[] = [];
+    const viaRelay = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith("https://relay.test/fred")) {
+        seen.push({ url, token: new Headers(init?.headers).get("x-relay-token") });
+        return src.fetch(url.replace("https://relay.test/fred?", "https://fred.test/graph/fredgraph.csv?"), init);
+      }
+      return src.fetch(input, init);
+    }) as typeof fetch;
+    const r = await runGlobalJob(db, { ...src, fetch: viaRelay, fredRelay: { url: "https://relay.test/fred", token: "t".repeat(32) } }, NOW);
+    expect(r.failed).toEqual([]);
+    expect(seen).toHaveLength(6);
+    expect(seen.every((s) => s.token === "t".repeat(32))).toBe(true);
+    expect(urls.filter((u) => u.startsWith("https://fred.test/"))).toHaveLength(6); // only the relay's forwarded calls
+  });
+});
+
 describe("global series", () => {
   it("loads history on first run, then asks only for recent days", async () => {
     const { src, urls } = fakeSources();

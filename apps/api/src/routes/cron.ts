@@ -30,7 +30,13 @@ export const cronRoutes =
       const got = Buffer.from(header ?? "");
       if (got.length !== expected.length || !timingSafeEqual(got, expected)) throw new AppError(401, "unauthorized", "Bad cron token.");
     };
-    const globalSources = { fredUrl: ctx.config.FRED_URL, fxUrl: ctx.config.FX_URL, fetch: fetchImpl };
+    const { FRED_RELAY_URL: relayUrl, FRED_RELAY_TOKEN: relayToken } = ctx.config;
+    const globalSources = {
+      fredUrl: ctx.config.FRED_URL,
+      fxUrl: ctx.config.FX_URL,
+      fetch: fetchImpl,
+      fredRelay: relayUrl && relayToken ? { url: relayUrl, token: relayToken } : undefined,
+    };
 
     /** Morning run before the Indian open: US closes and fresh rupee rates. */
     app.get("/global", async (req) => {
