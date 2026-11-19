@@ -1,4 +1,4 @@
-import { summarize, valueFunds, valueHoldings } from "@kairo/core";
+import { summarize, valueFunds, valueHoldings, type PortfolioSnapshot } from "@kairo/core";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../app.js";
@@ -11,7 +11,7 @@ export const portfolioRoutes =
      * One endpoint for the overview. Holdings, funds and cash are fetched in parallel
      * and returned as one snapshot, so the totals and the tables always agree.
      */
-    app.get("/portfolio", async (req, reply) => {
+    app.get("/portfolio", async (req, reply): Promise<PortfolioSnapshot> => {
       const provider = ctx.providerFor(req.session);
       const [holdings, funds, cash] = await Promise.all([provider.holdings(), provider.fundHoldings(), provider.funds()]);
       reply.header("cache-control", "no-store");

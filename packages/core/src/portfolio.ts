@@ -77,3 +77,12 @@ export function summarize(holdings: readonly Holding[], funds: readonly FundHold
     },
   };
 }
+
+/** The /api/portfolio response: one consistent snapshot shared by API and web. */
+export interface PortfolioSnapshot {
+  asOf: string;
+  summary: PortfolioSummary;
+  cash: { available: number; used: number };
+  holdings: HoldingView[];
+  funds: FundHoldingView[];
+}
