@@ -1,4 +1,4 @@
-import type { AlertKind, IngestRun, MarketOverview, PortfolioSnapshot, ScreenRow, ScreenRule, TradeSummary, WatchItem } from "@kairo/core";
+import type { AlertKind, GlobalQuote, IngestRun, MarketOverview, PortfolioSnapshot, ScreenRow, ScreenRule, TradeSummary, WatchItem } from "@kairo/core";
 
 export interface StockDetail {
   symbol: string;
@@ -70,6 +70,8 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
 export interface Me {
   authenticated: boolean;
   mode: "demo" | "kite";
+  /** Public demo: writes are rejected, so the UI hides them. */
+  readOnly: boolean;
   user?: { id: string; name: string };
   expiresAt?: string;
 }
@@ -107,5 +109,6 @@ export const api = {
   clearTrades: () => send<void>("/api/trades", "DELETE"),
   stock: (symbol: string) => getJson<StockDetail>(`/api/stocks/${encodeURIComponent(symbol)}`),
   symbols: (q: string) => getJson<{ results: { symbol: string; name: string }[] }>(`/api/symbols?q=${encodeURIComponent(q)}`),
+  global: () => getJson<{ quotes: GlobalQuote[]; cues: string | null; unavailable: string[]; sources: string }>("/api/global"),
   logout: () => fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }),
 };

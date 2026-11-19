@@ -67,11 +67,13 @@ export const authRoutes =
     });
 
     app.get("/me", async (req, reply) => {
-      if (!kite) return { authenticated: true, mode: "demo", user: { id: "DEMO", name: "Demo Investor" } };
+      // readOnly tells the UI to hide controls the public demo would reject anyway.
+      if (!kite) return { authenticated: true, mode: "demo", readOnly: ctx.publicDemo, user: { id: "DEMO", name: "Demo Investor" } };
       if (!req.session) return reply.status(401).send({ authenticated: false, mode: "kite" });
       return {
         authenticated: true,
         mode: "kite",
+        readOnly: false,
         user: { id: req.session.userId, name: req.session.userName },
         expiresAt: new Date(req.session.expiresAt).toISOString(),
       };

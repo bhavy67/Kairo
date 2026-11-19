@@ -256,6 +256,25 @@ const MIGRATIONS: { id: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: 8,
+    name: "global series",
+    sql: `
+      -- End-of-day global series (indices, US 10-year, Brent, rupee rates).
+      create table global_series (
+        id    text not null,
+        date  date not null,
+        value double precision not null,
+        primary key (id, date)
+      );
+      -- Market data, so the public demo's read-only role may read it (when that role exists).
+      do $$ begin
+        if exists (select 1 from pg_roles where rolname = 'kairo_demo') then
+          execute 'grant select on global_series to kairo_demo';
+        end if;
+      end $$;
+    `,
+  },
 ];
 
 export async function migrate(db: Db): Promise<number[]> {

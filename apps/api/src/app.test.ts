@@ -247,6 +247,7 @@ describe("public demo (read-only database)", () => {
     await db.query("insert into alerts (symbol, kind, threshold) values ('SECRET', 'price_above', 1)");
     app = await buildApp({ db, config: loadConfig({ NODE_ENV: "production", DATABASE_READ_ONLY: "true" }), logger: false });
 
+    expect((await app.inject("/api/auth/me")).json()).toMatchObject({ mode: "demo", readOnly: true });
     expect((await app.inject("/api/watchlist")).json()).toEqual({ items: [] });
     expect((await app.inject("/api/alerts")).json()).toMatchObject({ alerts: [], events: [] });
     expect((await app.inject("/api/screens")).json()).toEqual({ screens: [] });

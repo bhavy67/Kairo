@@ -8,6 +8,7 @@ import { Change } from "@/components/Change";
 import { PriceChart } from "@/components/PriceChart";
 import { ErrorCard, Loading } from "@/components/States";
 import { api, ApiError } from "@/lib/api";
+import { useReadOnly } from "@/lib/useMe";
 import { longDate, money, money2, percent, qty, ratio } from "@/lib/format";
 
 const KIND: Record<string, string> = {
@@ -29,6 +30,7 @@ export default function StockPage() {
   const params = useParams<{ symbol: string }>();
   const sym = decodeURIComponent(params?.symbol ?? "").toUpperCase();
   const qc = useQueryClient();
+  const readOnly = useReadOnly();
   const q = useQuery({ queryKey: ["stock", sym], queryFn: () => api.stock(sym) });
   const watch = useMutation({
     mutationFn: async (on: boolean) => {
@@ -67,14 +69,14 @@ export default function StockPage() {
           <h1>{s.symbol}</h1>
           <span className="muted">{s.name}{s.industry ? ` · ${s.industry}` : ""}</span>
         </div>
-        <button
+        {!readOnly && (<button
           className={s.watching ? "btn" : "btn btn-primary"}
           onClick={() => watch.mutate(!s.watching)}
           disabled={watch.isPending}
           aria-pressed={s.watching}
         >
           {s.watching ? "On watchlist ✓" : "Add to watchlist"}
-        </button>
+        </button>)}
       </div>
       {watch.error && <p className="loss" role="alert">{watch.error instanceof ApiError ? watch.error.message : "Could not update the watchlist."}</p>}
 
@@ -129,7 +131,7 @@ export default function StockPage() {
           ) : (
             <p className="muted" style={{ margin: 0 }}>No alerts on {s.symbol}.</p>
           )}
-          <p style={{ margin: "12px 0 0" }}><Link href={`/watch/alerts?symbol=${encodeURIComponent(s.symbol)}`} className="muted">Add an alert →</Link></p>
+          {!readOnly && <p style={{ margin: "12px 0 0" }}><Link href={`/watch/alerts?symbol=${encodeURIComponent(s.symbol)}`} className="muted">Add an alert →</Link></p>}
         </section>
       </div>
     </div>

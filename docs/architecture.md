@@ -74,6 +74,10 @@ ISIN → NSE symbol ─► matchLots (corporate actions → intraday netting →
                                                         XIRR · realised by FY · unrealised · reconciliation
 ```
 
+## Global markets
+
+`runGlobalJob` refreshes ten series into `global_series (id, date, value)`: FRED CSVs for US indices, Nikkei, the US 10-year yield and Brent, and one Frankfurter call for rupee rates. Each source fails independently, the first run loads 400 days, and later runs re-read a 10-day overlap because sources revise late prints. It runs from the morning cron (08:10 IST, Tue–Sat, after the US close) and after the evening NSE import. `overnightCues` turns the latest quotes into one descriptive sentence; only equity indices get gain/loss colour, since a rising yield, oil price or dollar is not simply good or bad.
+
 ## Deployments (ADR 9)
 
 | | kairo.bhavyladani.in | kairo-demo.bhavyladani.in |

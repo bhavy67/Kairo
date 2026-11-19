@@ -23,6 +23,7 @@ export default function Today() {
   const market = useQuery({ queryKey: ["market"], queryFn: api.market, staleTime: 5 * 60_000 });
   const alerts = useQuery({ queryKey: ["alerts"], queryFn: api.alerts, staleTime: 5 * 60_000 });
   const screens = useQuery({ queryKey: ["today"], queryFn: api.today, staleTime: 5 * 60_000 });
+  const global = useQuery({ queryKey: ["global"], queryFn: api.global, staleTime: 5 * 60_000 });
 
   if (isPending) return <Loading rows={5} />;
   if (error) return <ErrorCard error={error} onRetry={() => void refetch()} />;
@@ -59,6 +60,12 @@ export default function Today() {
         <section className="card feed" aria-labelledby="changed">
           <h2 id="changed">What changed</h2>
           {mood && <p className="mood">{mood}</p>}
+          {global.data?.cues && (
+            <p className="mood">
+              <Link href="/markets/global" className="label" style={{ display: "block", marginBottom: 4 }}>Overnight</Link>
+              {global.data.cues}
+            </p>
+          )}
           {feed.length === 0 ? (
             <p className="muted" style={{ margin: 0 }}>Quiet day: no holding moved more than 2% and no alert fired.</p>
           ) : (

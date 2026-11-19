@@ -17,6 +17,7 @@ const scheduler = config.INGEST_SCHEDULE
       market: new MarketRepo(db),
       signals: new SignalsRepo(db),
       notifier: config.TELEGRAM_BOT_TOKEN && config.TELEGRAM_CHAT_ID ? telegramNotifier(config.TELEGRAM_BOT_TOKEN, config.TELEGRAM_CHAT_ID) : null,
+      global: { fredUrl: config.FRED_URL, fxUrl: config.FX_URL, fetch },
       log: app.log,
     })
   : null;

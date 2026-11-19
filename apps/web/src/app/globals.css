@@ -399,3 +399,7 @@ th button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; bo
   table.cardable td:first-child::before { display: none; }
   table.cardable td[data-label=""]::before { display: none; }
 }
+
+/* ------------------------------------------------------------ global */
+.cues { display: grid; gap: 8px; }
+.cues p { margin: 0; font-size: 17px; line-height: 1.5; letter-spacing: -0.01em; color: var(--ink); max-width: 72ch; }

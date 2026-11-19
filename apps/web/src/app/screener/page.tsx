@@ -10,6 +10,7 @@ import { ErrorCard, Loading } from "@/components/States";
 import { api, ApiError, type PresetResult } from "@/lib/api";
 import { FIELD_UNITS, FLAG_OPTIONS, NUMERIC_OPTIONS, formatField } from "@/lib/fields";
 import { longDate } from "@/lib/format";
+import { useReadOnly } from "@/lib/useMe";
 
 /** Builder rows keep user-entered display units (%, ₹ Cr); they become raw units on run. */
 type Row =
@@ -38,6 +39,7 @@ function toConditions(rows: Row[]): Condition[] {
 
 export default function Screener() {
   const today = useQuery({ queryKey: ["today"], queryFn: api.today, staleTime: 5 * 60_000 });
+  const readOnly = useReadOnly();
   const builderRef = useRef<HTMLDivElement>(null);
   const [universe, setUniverse] = useState<ScreenRule["universe"]>("NIFTY 500");
   const [rows, setRows] = useState<Row[]>([{ kind: "value", field: "rsi14", op: "<", value: "30" }]);
@@ -117,7 +119,7 @@ export default function Screener() {
             <ScreenTable rows={run.data.rows} caption="Screen results" />
           </>
         )}
-        <SaveScreen rule={rule} />
+        {!readOnly && <SaveScreen rule={rule} />}
       </section>
 
       <SavedScreens />

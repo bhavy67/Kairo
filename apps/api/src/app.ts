@@ -15,6 +15,7 @@ import { marketRoutes } from "./routes/market.js";
 import { signalsRoutes } from "./routes/signals.js";
 import { tradesRoutes } from "./routes/trades.js";
 import { stockRoutes } from "./routes/stocks.js";
+import { globalRoutes } from "./routes/global.js";
 import { telegramNotifier, type Notifier } from "./signals/notifier.js";
 import { SignalsRepo } from "./signals/repo.js";
 import { portfolioRoutes } from "./routes/portfolio.js";
@@ -143,6 +144,7 @@ export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Dat
   await app.register(signalsRoutes(ctx), { prefix: "/api" });
   await app.register(tradesRoutes(ctx), { prefix: "/api" });
   await app.register(stockRoutes(ctx), { prefix: "/api" });
+  await app.register(globalRoutes(ctx), { prefix: "/api" });
   await app.register(cronRoutes(ctx, fetchImpl), { prefix: "/api/cron" });
 
   return app;

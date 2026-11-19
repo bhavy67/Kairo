@@ -24,6 +24,8 @@ const Env = z
     DATABASE_READ_ONLY: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
     DATA_DIR: z.string().default(".data"),
     NSE_ARCHIVE_URL: z.string().url().default("https://nsearchives.nseindia.com"),
+    FRED_URL: z.string().url().default("https://fred.stlouisfed.org"),
+    FX_URL: z.string().url().default("https://api.frankfurter.dev/v1"),
     /** Bearer token Vercel Cron (or any scheduler) sends to /api/cron/*. Unset disables the route. */
     CRON_SECRET: z.string().min(16).optional(),
     /** Telegram alerts: a bot token from @BotFather and your chat id. Both or neither. */

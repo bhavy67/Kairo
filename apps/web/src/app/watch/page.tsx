@@ -9,9 +9,11 @@ import { SortableTable, type Column } from "@/components/SortableTable";
 import { ErrorCard, Loading } from "@/components/States";
 import { api, ApiError } from "@/lib/api";
 import { big, money2, percent } from "@/lib/format";
+import { useReadOnly } from "@/lib/useMe";
 
 export default function Watchlist() {
   const qc = useQueryClient();
+  const readOnly = useReadOnly();
   const q = useQuery({ queryKey: ["watchlist"], queryFn: api.watchlist });
   const [symbol, setSymbol] = useState("");
   const invalidate = () => qc.invalidateQueries({ queryKey: ["watchlist"] });
@@ -44,12 +46,12 @@ export default function Watchlist() {
   return (
     <div className="stack">
       <div className="page-head"><h2 className="sr">Watchlist</h2><span className="muted">NSE close prices</span></div>
-      <form className="card row" onSubmit={submit}>
+      {!readOnly && <form className="card row" onSubmit={submit}>
         <label htmlFor="sym" className="sr">NSE symbol</label>
         <input id="sym" className="input" placeholder="NSE symbol, e.g. TCS" value={symbol} onChange={(e) => setSymbol(e.target.value)} autoComplete="off" spellCheck={false} />
         <button className="btn btn-primary" disabled={add.isPending}>Add</button>
         {add.error && <span className="loss" role="alert">{add.error instanceof ApiError ? add.error.message : "Could not add."}</span>}
-      </form>
+      </form>}
       {q.isPending ? <Loading /> : q.error ? <ErrorCard error={q.error} onRetry={() => void q.refetch()} /> : (
         <section className="card">
           {q.data.items.length === 0 ? <p className="empty">Nothing on the watchlist yet.</p> : (

@@ -23,9 +23,11 @@ Hosting: Vercel (Mumbai) + Supabase. See [deploy.md](deploy.md).
 - [ ] Breadth history chart (A/D line, % above 200-day over time)
 - [ ] Intraday quotes once on the Kite data plan
 
-## Phase 3: Global
-- [ ] US/EU/Asia indices, USD/INR, US 10Y, Brent (Finnhub or Twelve Data free tier)
-- [ ] Overnight-cues summary before the Indian open
+## Phase 3: Global (done)
+- [x] S&P 500, Nasdaq, Dow, Nikkei 225, US 10-year yield, Brent (FRED, keyless)
+- [x] Rupee against USD, EUR, GBP, JPY (ECB reference rates via Frankfurter)
+- [x] Overnight-cues sentence on Global and Today; morning refresh before the Indian open
+- [ ] FTSE, DAX, Hang Seng (licensed: need a keyed provider)
 
 ## Phase 4: Signals and screeners (done)
 - [x] Daily indicators: 20/50/200-day averages, RSI 14, 1W/1M/3M returns, volume ratio, 52-week range, crossovers

@@ -3,6 +3,7 @@ import type { Db } from "../db/db.js";
 import { runEodJob } from "./ingest.js";
 import type { MarketRepo } from "./repo.js";
 import { runAlertJob } from "../signals/job.js";
+import { runGlobalJob, type GlobalSources } from "../global/ingest.js";
 import type { Notifier } from "../signals/notifier.js";
 import type { SignalsRepo } from "../signals/repo.js";
 import type { NseArchive } from "./nse-archive.js";
@@ -24,11 +25,12 @@ export interface SchedulerDeps {
   market: MarketRepo;
   signals: SignalsRepo;
   notifier: Notifier | null;
+  global: GlobalSources;
   log: FastifyBaseLogger;
   now?: () => number;
 }
 
-export function startScheduler({ db, nse, market, signals, notifier, log, now = Date.now }: SchedulerDeps) {
+export function startScheduler({ db, nse, market, signals, notifier, global, log, now = Date.now }: SchedulerDeps) {
   let running = false;
 
   const tick = async () => {
@@ -42,6 +44,8 @@ export function startScheduler({ db, nse, market, signals, notifier, log, now = 
         const alerts = await runAlertJob(db, signals, latest, notifier);
         if (alerts.newEvents) log.info(alerts, "alerts evaluated");
       }
+      const g = await runGlobalJob(db, global, now());
+      if (g.failed.length) log.warn({ failed: g.failed }, "global series refresh failed");
     } catch (err) {
       log.error({ err }, "scheduler tick failed");
     } finally {

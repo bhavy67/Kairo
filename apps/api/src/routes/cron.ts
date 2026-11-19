@@ -7,6 +7,7 @@ import type { Fetch } from "../kite/client.js";
 import { runEodJob } from "../market/ingest.js";
 import { NseArchive } from "../market/nse-archive.js";
 import { runAlertJob } from "../signals/job.js";
+import { runGlobalJob } from "../global/ingest.js";
 
 const Query = z.object({
   days: z.coerce.number().int().min(1).max(500).default(10),
@@ -25,10 +26,20 @@ export const cronRoutes =
     const secret = ctx.config.CRON_SECRET;
     if (!secret) return;
     const expected = Buffer.from(`Bearer ${secret}`);
+    const authorize = (header: string | undefined) => {
+      const got = Buffer.from(header ?? "");
+      if (got.length !== expected.length || !timingSafeEqual(got, expected)) throw new AppError(401, "unauthorized", "Bad cron token.");
+    };
+    const globalSources = { fredUrl: ctx.config.FRED_URL, fxUrl: ctx.config.FX_URL, fetch: fetchImpl };
+
+    /** Morning run before the Indian open: US closes and fresh rupee rates. */
+    app.get("/global", async (req) => {
+      authorize(req.headers.authorization);
+      return runGlobalJob(ctx.db, globalSources, ctx.now());
+    });
 
     app.get("/eod", async (req) => {
-      const got = Buffer.from(req.headers.authorization ?? "");
-      if (got.length !== expected.length || !timingSafeEqual(got, expected)) throw new AppError(401, "unauthorized", "Bad cron token.");
+      authorize(req.headers.authorization);
       const q = Query.parse(req.query);
       const nse = new NseArchive(ctx.config.NSE_ARCHIVE_URL, fetchImpl);
       const started = Date.now();
@@ -40,6 +51,8 @@ export const cronRoutes =
       if (count("ok") > 0 || job.reparsed > 0) await ctx.market.refreshSnapshot();
       const latest = await ctx.market.latestDate();
       if (latest && !job.more) alerts = await runAlertJob(ctx.db, ctx.signals, latest, ctx.notifier);
+      // The evening run refreshes global series too, so one schedule is enough if the morning one is absent.
+      const global = job.more ? null : await runGlobalJob(ctx.db, globalSources, ctx.now());
       return {
         ok: count("failed") === 0,
         ms: Date.now() - started,
@@ -51,6 +64,7 @@ export const cronRoutes =
         pending: count("pending"),
         more: job.more,
         alerts,
+        global: global && { ok: global.ok.length, failed: global.failed, rows: global.rows },
       };
     });
   };

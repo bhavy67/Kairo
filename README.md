@@ -14,6 +14,7 @@ Live demo: https://kairo-demo.bhavyladani.in (demo portfolio and sample tradeboo
 - **Holdings**: equity holdings with average cost, LTP, P&L, day change and weight. Sortable.
 - **Funds**: Coin mutual fund holdings with NAV, P&L and weight.
 - **Markets** (NSE end of day): headline indices with trend, India VIX, breadth across the Nifty 500, sector heatmap, top movers and volume spikes.
+- **Global**: S&P 500, Nasdaq, Dow, Nikkei, US 10-year yield, Brent and rupee rates, with an overnight-cues summary for the Indian open.
 - **Returns** from your Zerodha tradebook: XIRR per stock and overall, realised P&L by financial year (short-term, long-term, intraday), FIFO lots with bonus and split handling, and reconciliation against broker holdings.
 - **Screener**: "stocks of the day" from six rule-based presets (breakouts, momentum, pullbacks, 200-day reclaims, unusual volume, oversold large caps), a rule builder, and saved screens.
 - **Alerts**: price crosses, big moves, 200-day crosses and new screen entrants, evaluated after each NSE close, with an optional Telegram digest.
@@ -22,7 +23,7 @@ Live demo: https://kairo-demo.bhavyladani.in (demo portfolio and sample tradeboo
 - **Kite login** with a CSRF-protected OAuth flow, restricted to one Kite account.
 - **Demo mode**: runs with a fake portfolio and no broker account, so anyone can clone and try it.
 
-Global markets and order placement are next. See the [roadmap](docs/roadmap.md).
+Order placement is next. See the [roadmap](docs/roadmap.md).
 
 ## Quick start (demo mode)
 

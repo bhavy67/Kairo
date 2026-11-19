@@ -8,6 +8,7 @@ import { Suspense, useState, type FormEvent } from "react";
 import { ErrorCard, Loading } from "@/components/States";
 import { api, ApiError, type AlertView } from "@/lib/api";
 import { longDate, money2 } from "@/lib/format";
+import { useReadOnly } from "@/lib/useMe";
 
 const KINDS: { kind: AlertKind; label: string; unit: "₹" | "%" | null }[] = [
   { kind: "price_above", label: "Closes above", unit: "₹" },
@@ -24,6 +25,7 @@ function describe(a: AlertView): string {
 
 function AlertsInner() {
   const qc = useQueryClient();
+  const readOnly = useReadOnly();
   const q = useQuery({ queryKey: ["alerts"], queryFn: api.alerts });
   const [symbol, setSymbol] = useState(useSearchParams()?.get("symbol") ?? "");
   const [kind, setKind] = useState<AlertKind>("price_above");
@@ -56,7 +58,7 @@ function AlertsInner() {
         <span className="muted">Checked after each NSE close · {q.data.channel ? `sent to ${q.data.channel}` : "in-app only (no Telegram configured)"}</span>
       </div>
 
-      <form className="card row" onSubmit={submit}>
+      {!readOnly && <form className="card row" onSubmit={submit}>
         <label htmlFor="a-sym" className="sr">NSE symbol</label>
         <input id="a-sym" className="input" style={{ maxWidth: 180 }} placeholder="Symbol" value={symbol} onChange={(e) => setSymbol(e.target.value)} autoComplete="off" spellCheck={false} required />
         <select className="select" aria-label="Condition" value={kind} onChange={(e) => setKind(e.target.value as AlertKind)}>
@@ -71,7 +73,7 @@ function AlertsInner() {
         )}
         <button className="btn btn-primary" disabled={add.isPending}>Add alert</button>
         {add.error && <span className="loss" role="alert">{add.error instanceof ApiError ? add.error.message : "Could not add."}</span>}
-      </form>
+      </form>}
 
       <section className="card">
         <h2>Rules</h2>

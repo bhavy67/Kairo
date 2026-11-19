@@ -3,6 +3,17 @@
   "framework": "nextjs",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "buildCommand": "cd ../.. && pnpm --filter @kairo/web... build",
-  "regions": ["bom1"],
-  "crons": [{ "path": "/api/cron/eod", "schedule": "30 13 * * 1-5" }]
+  "regions": [
+    "bom1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/eod",
+      "schedule": "30 13 * * 1-5"
+    },
+    {
+      "path": "/api/cron/global",
+      "schedule": "40 2 * * 2-6"
+    }
+  ]
 }
