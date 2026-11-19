@@ -9,7 +9,7 @@
     "prepare": "git config core.hooksPath .githooks || true",
     "dev": "pnpm --parallel --filter @kairo/api --filter @kairo/web dev",
     "build": "pnpm -r build",
-    "typecheck": "pnpm --filter @kairo/core build && pnpm -r typecheck",
-    "test": "pnpm --filter @kairo/core build && pnpm -r test"
+    "typecheck": "pnpm --filter \"@kairo/api...\" build && pnpm -r typecheck",
+    "test": "pnpm --filter \"@kairo/api...\" build && pnpm -r test"
   }
 }
