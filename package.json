@@ -1,0 +1,15 @@
+{
+  "name": "kairo",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
+    "dev": "pnpm --parallel --filter @kairo/api --filter @kairo/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm --filter @kairo/core build && pnpm -r typecheck",
+    "test": "pnpm --filter @kairo/core build && pnpm -r test"
+  }
+}
