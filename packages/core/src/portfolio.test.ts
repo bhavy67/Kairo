@@ -48,3 +48,18 @@ describe("summarize", () => {
     expect(s.allocation).toEqual({ equity: 0, funds: 0 });
   });
 });
+
+import { sectorAllocation } from "./portfolio.js";
+
+describe("sectorAllocation", () => {
+  it("groups by sector and keeps unknowns as Unclassified", () => {
+    const out = sectorAllocation(
+      [h({ isin: "A", quantity: 1, lastPrice: 300 }), h({ isin: "B", quantity: 1, lastPrice: 100 }), h({ isin: "C", quantity: 1, lastPrice: 600 })],
+      new Map([["A", "IT"], ["B", "IT"]]),
+    );
+    expect(out).toEqual([
+      { sector: "Unclassified", value: 600, holdings: 1, weight: 0.6 },
+      { sector: "IT", value: 400, holdings: 2, weight: 0.4 },
+    ]);
+  });
+});

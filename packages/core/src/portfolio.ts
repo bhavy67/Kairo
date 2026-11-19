@@ -85,4 +85,31 @@ export interface PortfolioSnapshot {
   cash: { available: number; used: number };
   holdings: HoldingView[];
   funds: FundHoldingView[];
+  sectors: SectorSlice[];
+}
+
+export interface SectorSlice {
+  sector: string;
+  value: number;
+  weight: number;
+  holdings: number;
+}
+
+/**
+ * Equity value by sector. Holdings with no known sector land in "Unclassified"
+ * rather than disappearing, so the weights always sum to 1.
+ */
+export function sectorAllocation(holdings: readonly Holding[], sectorByIsin: ReadonlyMap<string, string>): SectorSlice[] {
+  const total = holdings.reduce((s, h) => s + h.quantity * h.lastPrice, 0);
+  const bySector = new Map<string, { value: number; holdings: number }>();
+  for (const h of holdings) {
+    const sector = sectorByIsin.get(h.isin) ?? "Unclassified";
+    const cur = bySector.get(sector) ?? { value: 0, holdings: 0 };
+    cur.value += h.quantity * h.lastPrice;
+    cur.holdings += 1;
+    bySector.set(sector, cur);
+  }
+  return [...bySector]
+    .map(([sector, v]) => ({ sector, ...v, weight: total === 0 ? 0 : v.value / total }))
+    .sort((a, b) => b.value - a.value);
 }
