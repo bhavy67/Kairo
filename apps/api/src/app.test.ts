@@ -24,7 +24,7 @@ function fakeKite(overrides: Record<string, Route> = {}) {
   const routes: Record<string, Route> = {
     "POST /session/token": () => ok({ user_id: "AB1234", access_token: "tok" }),
     "DELETE /session/token": () => ok(true),
-    "GET /user/profile": () => ok({ user_id: "AB1234", user_name: "Bhavy", broker: "ZERODHA" }),
+    "GET /user/profile": () => ok({ user_id: "AB1234", user_name: "BHAVY RAJESHKUMAR LADANI", broker: "ZERODHA" }),
     "GET /user/margins": () => ok({ equity: { net: 1000, utilised: { debits: 0 } } }),
     "GET /portfolio/holdings": () =>
       ok([{ tradingsymbol: "INFY", exchange: "NSE", isin: "INE009A01021", quantity: 2, t1_quantity: 1, average_price: 100, last_price: 120, close_price: 110, extra_field: 1 }]),
@@ -103,6 +103,9 @@ describe("kite auth flow", () => {
     expect(body.holdings[0].quantity).toBe(3); // quantity + t1_quantity
     expect(body.summary.equity.current).toBe(360);
     expect(calls.find((c) => c.path === "/portfolio/holdings")?.auth).toBe("token key:tok");
+    // The legal name is shortened for display: no father's name in the UI.
+    const me = (await app.inject({ url: "/api/auth/me", cookies: { kairo_sid: sid! } })).json();
+    expect(me.user.name).toBe("Bhavy Ladani");
   });
 
   it("rejects requests without a session", async () => {

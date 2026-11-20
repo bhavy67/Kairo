@@ -1,5 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { FastifyPluginAsync } from "fastify";
+import { displayName } from "@kairo/core";
 import { z } from "zod";
 import { SESSION_COOKIE, setSessionCookie, type AppContext } from "../app.js";
 import { loginUrl } from "../kite/client.js";
@@ -74,7 +75,8 @@ export const authRoutes =
         authenticated: true,
         mode: "kite",
         readOnly: false,
-        user: { id: s.userId, name: s.userName },
+        // Legal name as Kite gives it, shortened for display (first name + surname).
+        user: { id: s.userId, name: displayName(s.userName) },
         expiresAt: new Date(s.expiresAt).toISOString(),
         kite: { connected: s.kiteToken !== null, expiresAt: s.kiteExpiresAt ? new Date(s.kiteExpiresAt).toISOString() : null },
       };
