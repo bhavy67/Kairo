@@ -3,6 +3,7 @@
 import { SymbolLink } from "@/components/SymbolLink";
 import type { HoldingView } from "@kairo/core";
 import { money, money2, percent, qty, share } from "@/lib/format";
+import { AnimatedNumber } from "./AnimatedNumber";
 import { Change } from "./Change";
 import { SortableTable, type Column } from "./SortableTable";
 
@@ -10,10 +11,10 @@ const COLUMNS: Column<HoldingView>[] = [
   { key: "symbol", label: "Instrument", sortValue: (h) => h.symbol, render: (h) => (<><SymbolLink symbol={h.symbol} /><div className="sub">{h.exchange}</div></>) },
   { key: "qty", label: "Qty", render: (h) => qty(h.quantity) },
   { key: "avg", label: "Avg cost", render: (h) => money2(h.averagePrice) },
-  { key: "ltp", label: "LTP", render: (h) => money2(h.lastPrice) },
-  { key: "current", label: "Value", sortValue: (h) => h.current, render: (h) => money(h.current) },
-  { key: "pnl", label: "P&L", sortValue: (h) => h.pnl, render: (h) => <Change value={h.pnl} format={money} pct={percent(h.pnlPct)} /> },
-  { key: "day", label: "Day", sortValue: (h) => h.dayChangePct ?? 0, render: (h) => <Change value={h.dayChange} format={money} pct={percent(h.dayChangePct)} /> },
+  { key: "ltp", label: "LTP", render: (h) => <AnimatedNumber value={h.lastPrice} format={money2} /> },
+  { key: "current", label: "Value", sortValue: (h) => h.current, render: (h) => <AnimatedNumber value={h.current} format={money} /> },
+  { key: "pnl", label: "P&L", sortValue: (h) => h.pnl, render: (h) => <Change value={h.pnl} format={money} pct={percent(h.pnlPct)} animate /> },
+  { key: "day", label: "Day", sortValue: (h) => h.dayChangePct ?? 0, render: (h) => <Change value={h.dayChange} format={money} pct={percent(h.dayChangePct)} animate /> },
   { key: "weight", label: "Weight", sortValue: (h) => h.weight, render: (h) => share(h.weight) },
 ];
 

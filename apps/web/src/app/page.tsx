@@ -56,13 +56,13 @@ export default function Today() {
           </div>
           <span className="hero-value"><AnimatedNumber value={s.total.current} format={money} /></span>
           <div className="hero-sub">
-            <span>Today <Change value={s.equity.dayChange} format={money} pct={percent(s.equity.dayChangePct)} /></span>
-            <span>Overall <Change value={s.total.pnl} format={money} pct={percent(s.total.pnlPct)} /></span>
+            <span>Today <Change value={s.equity.dayChange} format={money} pct={percent(s.equity.dayChangePct)} animate /></span>
+            <span>Overall <Change value={s.total.pnl} format={money} pct={percent(s.total.pnlPct)} animate /></span>
           </div>
           <dl className="hero-facts">
             <div><dt className="label">Invested</dt><dd>{money(s.total.invested)}</dd></div>
-            <div><dt className="label">Equity</dt><dd>{money(s.equity.current)}</dd></div>
-            <div><dt className="label">Funds</dt><dd>{money(s.funds.current)}</dd></div>
+            <div><dt className="label">Equity</dt><dd><AnimatedNumber value={s.equity.current} format={money} /></dd></div>
+            <div><dt className="label">Funds</dt><dd><AnimatedNumber value={s.funds.current} format={money} /></dd></div>
             <div><dt className="label">Cash</dt><dd>{money(cash.available)}</dd></div>
           </dl>
         </section>
