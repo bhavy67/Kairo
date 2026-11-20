@@ -13,6 +13,8 @@ export interface NavRecord {
   nav: number;
   /** ISO date YYYY-MM-DD. */
   date: string;
+  /** SEBI category from the section header, e.g. "Equity Scheme - Large Cap Fund". Null if none seen. */
+  category: string | null;
 }
 
 const MONTHS: Record<string, string> = {
@@ -30,9 +32,16 @@ const isIsin = (s: string) => /^IN[A-Z0-9]{10}$/.test(s);
 
 export function parseAmfiNav(text: string): NavRecord[] {
   const out: NavRecord[] = [];
+  let category: string | null = null;
   for (const raw of text.split(/\r?\n/)) {
     const cols = raw.split(";");
-    if (cols.length < 6) continue;
+    if (cols.length < 6) {
+      // Section headers like "Open Ended Schemes(Debt Scheme - Liquid Fund)" set the category
+      // for the schemes listed under them; fund-house name lines have no parentheses.
+      const m = /\((.+)\)\s*$/.exec(raw.trim());
+      if (m && /Scheme|ETF|Fund/i.test(m[1]!)) category = m[1]!.trim();
+      continue;
+    }
     const [code, isin1, isin2, name, navStr, dateStr] = cols.map((c) => c.trim());
     if (!code || !/^\d+$/.test(code)) continue; // header row
     const nav = Number(navStr);
@@ -44,6 +53,7 @@ export function parseAmfiNav(text: string): NavRecord[] {
       name: name ?? "",
       nav,
       date,
+      category,
     });
   }
   return out;
