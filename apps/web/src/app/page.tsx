@@ -38,7 +38,15 @@ export default function Today() {
     <div className="stack">
       <PageTitle
         title="Today"
-        meta={<span aria-live="polite">{isFetching ? "Refreshing…" : `Prices as of ${timeIst(data.asOf)} IST${m?.asOf ? ` · NSE close ${longDate(m.asOf)}` : ""}`}</span>}
+        meta={
+          <span aria-live="polite">
+            {isFetching
+              ? "Refreshing…"
+              : data.source === "snapshot" && data.snapshotAt
+                ? `Holdings synced ${longDate(data.snapshotAt.slice(0, 10))} ${timeIst(data.snapshotAt)} IST · valued at NSE close${m?.asOf ? ` ${longDate(m.asOf)}` : ""}`
+                : `Prices as of ${timeIst(data.asOf)} IST${m?.asOf ? ` · NSE close ${longDate(m.asOf)}` : ""}`}
+          </span>
+        }
       />
 
       <div className="today-grid">

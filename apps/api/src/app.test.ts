@@ -129,17 +129,19 @@ describe("kite auth flow", () => {
     expect(calls.some((c) => c.method === "DELETE" && c.path === "/session/token")).toBe(true);
   });
 
-  it("drops the session when Kite says the token expired", async () => {
+  it("keeps the Kairo session when Kite rejects the token, and asks to reconnect", async () => {
     const { fetchImpl } = fakeKite({
       "GET /portfolio/holdings": () => ({ status: "error", message: "expired", error_type: "TokenException" }),
     });
     app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
     const { sid } = await signIn(fetchImpl);
+    // No snapshot saved yet, so there is nothing to fall back on.
     const res = await app.inject({ url: "/api/portfolio", cookies: { kairo_sid: sid! } });
-    expect(res.statusCode).toBe(401);
-    expect(res.json().error).toBe("session_expired");
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toBe("broker_disconnected");
     const me = await app.inject({ url: "/api/auth/me", cookies: { kairo_sid: sid! } });
-    expect(me.statusCode).toBe(401);
+    expect(me.statusCode).toBe(200);
+    expect(me.json().kite).toEqual({ connected: false, expiresAt: null });
   });
 
   it("returns 502 when Kite changes a field type", async () => {
@@ -167,16 +169,121 @@ describe("session storage", () => {
     await other.close();
   });
 
-  it("treats sessions sealed with another secret as signed out", async () => {
+  it("treats a token sealed with another secret as disconnected, not as a valid token", async () => {
     const db = await testDb();
     const { fetchImpl } = fakeKite();
     app = await buildApp({ db, config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
     const { sid } = await signIn(fetchImpl);
+    // In practice rotating SESSION_SECRET also invalidates every cookie signature;
+    // re-signing here isolates the token path: it must never decrypt to garbage.
     const rotated = await buildApp({ db, config: loadConfig({ ...KITE_ENV, SESSION_SECRET: "y".repeat(32) }), fetch: fetchImpl, logger: false });
-    const raw = app.unsignCookie(sid!).value!;
-    const resigned = rotated.signCookie(raw);
-    expect((await rotated.inject({ url: "/api/auth/me", cookies: { kairo_sid: resigned } })).statusCode).toBe(401);
+    const resigned = rotated.signCookie(app.unsignCookie(sid!).value!);
+    const me = await rotated.inject({ url: "/api/auth/me", cookies: { kairo_sid: resigned } });
+    expect(me.json().kite.connected).toBe(false);
     await rotated.close();
+  });
+});
+
+describe("long sessions and holdings snapshots", () => {
+  const DAY = 86_400_000;
+  const T0 = Date.parse("2026-11-20T04:00:00Z"); // 09:30 IST
+
+  /** A Kite whose holdings endpoint can be switched to "token expired". */
+  function switchableKite() {
+    const state = { expired: false };
+    const kite = fakeKite({
+      "GET /portfolio/holdings": () =>
+        state.expired
+          ? { status: "error", message: "expired", error_type: "TokenException" }
+          : ok([{ tradingsymbol: "INFY", exchange: "NSE", isin: "INE009A01021", quantity: 2, t1_quantity: 1, average_price: 100, last_price: 120, close_price: 110 }]),
+    });
+    return { ...kite, state };
+  }
+
+  async function reconnect(sid: string) {
+    const login = await app.inject({ url: "/api/auth/login", cookies: { kairo_sid: sid } });
+    const state = new URLSearchParams(new URL(login.headers.location as string).searchParams.get("redirect_params")!).get("state")!;
+    return app.inject({
+      url: `/api/auth/callback?status=success&request_token=rt2&state=${state}`,
+      cookies: { kairo_oauth_state: cookieOf(login, "kairo_oauth_state")!, kairo_sid: sid },
+    });
+  }
+
+  it("serves the saved snapshot after the token expires, revalued at the latest NSE close", async () => {
+    const db = await testDb();
+    const { fetchImpl, state, calls } = switchableKite();
+    app = await buildApp({ db, config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    const { sid } = await signIn(fetchImpl);
+
+    const live = (await app.inject({ url: "/api/portfolio", cookies: { kairo_sid: sid! } })).json();
+    expect(live).toMatchObject({ source: "live", snapshotAt: null });
+
+    // A newer NSE close arrives after the snapshot was taken.
+    await db.query(
+      `insert into daily_bars (symbol, date, isin, open, high, low, close, prev_close, volume, turnover)
+       values ('INFY', current_date + 1, 'INE009A01021', 125, 131, 124, 130, 120, 1000, 130000)`,
+    );
+    state.expired = true;
+    const res = await app.inject({ url: "/api/portfolio", cookies: { kairo_sid: sid! } });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.source).toBe("snapshot");
+    expect(body.snapshotAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(body.holdings[0]).toMatchObject({ symbol: "INFY", quantity: 3, lastPrice: 130, previousClose: 120 });
+
+    // The token is now forgotten: later requests go straight to the snapshot.
+    const before = calls.filter((c) => c.path === "/portfolio/holdings").length;
+    await app.inject({ url: "/api/portfolio", cookies: { kairo_sid: sid! } });
+    expect(calls.filter((c) => c.path === "/portfolio/holdings").length).toBe(before);
+  });
+
+  it("reconnects Kite onto the same session instead of creating a new one", async () => {
+    const db = await testDb();
+    const { fetchImpl, state } = switchableKite();
+    app = await buildApp({ db, config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    const { sid } = await signIn(fetchImpl);
+    await app.inject({ url: "/api/portfolio", cookies: { kairo_sid: sid! } });
+    state.expired = true;
+    await app.inject({ url: "/api/portfolio", cookies: { kairo_sid: sid! } });
+    expect((await app.inject({ url: "/api/auth/me", cookies: { kairo_sid: sid! } })).json().kite.connected).toBe(false);
+
+    state.expired = false;
+    const cb = await reconnect(sid!);
+    expect(cb.headers.location).toBe("/");
+    expect(cookieOf(cb, "kairo_sid")).toBeUndefined(); // same session, no new cookie
+    expect((await app.inject({ url: "/api/auth/me", cookies: { kairo_sid: sid! } })).json().kite.connected).toBe(true);
+    const [n] = await db.query<{ n: number }>("select count(*)::int as n from sessions");
+    expect(n!.n).toBe(1);
+  });
+
+  it("lasts 30 days, slides while used, and outlives the daily Kite token", async () => {
+    let now = T0;
+    const { fetchImpl } = fakeKite();
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, now: () => now, logger: false });
+    const { sid } = await signIn(fetchImpl);
+    const me = () => app.inject({ url: "/api/auth/me", cookies: { kairo_sid: sid! } });
+
+    now = T0 + DAY; // next morning: Kite token gone, Kairo session fine
+    const day1 = await me();
+    expect(day1.statusCode).toBe(200);
+    expect(day1.json().kite.connected).toBe(false);
+    expect(cookieOf(day1, "kairo_sid")).toBeDefined(); // renewed: cookie re-issued with a later expiry
+
+    now = T0 + 29 * DAY;
+    expect((await me()).statusCode).toBe(200); // renewed again on use
+    now = T0 + 58 * DAY;
+    expect((await me()).statusCode).toBe(200); // still within 30 days of the last use
+    now = T0 + 89 * DAY;
+    expect((await me()).statusCode).toBe(401); // 31 idle days later: expired
+  });
+
+  it("signs out everywhere", async () => {
+    const { fetchImpl } = fakeKite();
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    const a = (await signIn(fetchImpl)).sid!;
+    const b = (await signIn(fetchImpl)).sid!;
+    expect((await app.inject({ method: "POST", url: "/api/auth/logout-all", cookies: { kairo_sid: a } })).statusCode).toBe(204);
+    expect((await app.inject({ url: "/api/auth/me", cookies: { kairo_sid: b } })).statusCode).toBe(401);
   });
 });
 

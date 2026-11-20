@@ -86,6 +86,10 @@ export interface PortfolioSnapshot {
   holdings: HoldingView[];
   funds: FundHoldingView[];
   sectors: SectorSlice[];
+  /** live: from the broker now. snapshot: last saved holdings, revalued at the latest close. */
+  source: "live" | "snapshot" | "demo";
+  /** When the snapshot's quantities were fetched from the broker (snapshot only). */
+  snapshotAt: string | null;
 }
 
 export interface SectorSlice {

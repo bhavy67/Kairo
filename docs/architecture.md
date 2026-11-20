@@ -26,7 +26,7 @@ The browser only talks to the web origin. Next.js rewrites `/api/*` to the API, 
 2. Kite redirects to `/api/auth/callback?request_token=…&state=…`.
 3. The API checks `state` (constant-time compare), exchanges the token using `sha256(api_key + request_token + api_secret)`, and rejects any user other than `KITE_ALLOWED_USER_ID`. It revokes that user's token rather than leaving it live.
 4. A random session id goes into a signed, `HttpOnly`, `SameSite=Lax` cookie. The Kite access token stays on the server.
-5. Sessions expire at 00:30 UTC (06:00 IST), the moment Kite invalidates tokens. If Kite rejects a token early (`TokenException`), the session is dropped and the UI routes to login.
+5. The Kairo session lasts 30 days and slides while used; the Kite token expires daily around 06:00 IST and is held separately. Without a working token, the portfolio is served from the last saved snapshot, revalued at the latest NSE close and AMFI NAV, and the UI offers "Reconnect Kite". See ADR 11.
 
 The secret and the access token never reach the browser. Logs redact `authorization`, `cookie` and `set-cookie`.
 
@@ -90,7 +90,6 @@ ISIN → NSE symbol ─► matchLots (corporate actions → intraday netting →
 
 | Limit | Why it is acceptable now | When it changes |
 |---|---|---|
-| In-memory sessions | One user, one process; a restart costs one login | Multiple instances, or Phase 5 (orders) |
 | End-of-day market data only | Free; see ADR 4 | Kite Connect data plan |
 | Corporate actions parsed from free text | Covers bonus, split, consolidation | Kite historical candles (pre-adjusted) |
 | Scheduler in the API process | One instance | Advisory lock or separate worker |

@@ -82,8 +82,8 @@ export function Shell({ children }: { children: ReactNode }) {
 
   if (onLogin) return <main className="shell">{children}</main>;
 
-  async function logout() {
-    await api.logout();
+  async function logout(everywhere: boolean) {
+    await (everywhere ? api.logoutAll() : api.logout());
     qc.clear();
     router.replace("/login");
   }
@@ -105,16 +105,33 @@ export function Shell({ children }: { children: ReactNode }) {
             {me.data?.mode === "demo" && <span className="badge">Demo</span>}
             <ThemeToggle />
             {me.data?.mode === "kite" && (
-              <div className="who">
-                <span className="name">{me.data.user?.name}</span>
-                <button className="icon-btn" onClick={logout} aria-label="Sign out" title="Sign out">
-                  <IconSignOut />
-                </button>
-              </div>
+              <details className="who menu">
+                <summary aria-label="Account">
+                  <span className="name">{me.data.user?.name}</span>
+                  <span className="initial" aria-hidden>{me.data.user?.name?.[0] ?? "·"}</span>
+                  <span className={`kite-dot ${me.data.kite?.connected ? "on" : ""}`} title={me.data.kite?.connected ? "Kite connected" : "Kite disconnected"} />
+                </summary>
+                <div className="menu-panel" role="menu">
+                  <p className="sub" style={{ margin: "0 0 6px" }}>
+                    {me.data.kite?.connected ? "Kite connected until 6 AM" : "Kite disconnected"}
+                  </p>
+                  <a role="menuitem" href="/api/auth/login">{me.data.kite?.connected ? "Refresh Kite connection" : "Reconnect Kite"}</a>
+                  <button role="menuitem" type="button" onClick={() => logout(false)}>
+                    <IconSignOut /> Sign out
+                  </button>
+                  <button role="menuitem" type="button" onClick={() => logout(true)}>Sign out on all devices</button>
+                </div>
+              </details>
             )}
           </div>
         </div>
       </header>
+      {me.data?.mode === "kite" && me.data.kite && !me.data.kite.connected && (
+        <div className="notice" role="status">
+          <span>Kite is disconnected. Holdings are from your last sync, valued at the latest NSE close and fund NAVs.</span>
+          <a href="/api/auth/login" className="btn">Reconnect Kite</a>
+        </div>
+      )}
       {/* Keyed by path so each page fades in on navigation. */}
       <main key={pathname} className="page">
         {me.isSuccess ? children : <Loading rows={4} />}

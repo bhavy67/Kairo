@@ -1,5 +1,5 @@
 import cookie from "@fastify/cookie";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 import { AmfiNavService } from "./amfi.js";
 import type { Db } from "./db/db.js";
 import { MarketRepo } from "./market/repo.js";
@@ -8,6 +8,8 @@ import { AppError } from "./errors.js";
 import { KiteClient, type Fetch } from "./kite/client.js";
 import { demoProvider } from "./providers/demo.js";
 import { kiteProvider } from "./providers/kite.js";
+import { resilientProvider } from "./providers/resilient.js";
+import { SnapshotStore, snapshotProvider } from "./providers/snapshot.js";
 import type { PortfolioProvider } from "./providers/types.js";
 import { authRoutes } from "./routes/auth.js";
 import { cronRoutes } from "./routes/cron.js";
@@ -42,6 +44,7 @@ export interface AppContext {
   now: () => number;
   kite: KiteClient | null;
   sessions: SessionStore;
+  snapshots: SnapshotStore;
   amfi: AmfiNavService;
   db: Db;
   market: MarketRepo;
@@ -57,8 +60,23 @@ export interface AppContext {
   assertAccess(session: Session | undefined): void;
   /** Like assertAccess, and also blocks writes on a public demo deployment. */
   assertWrite(session: Session | undefined): void;
-  /** Resolves the provider for a request, or throws 401 when a Kite session is required. */
+  /**
+   * The provider for a request: live Kite data when the token works, otherwise the
+   * saved snapshot (401 without a session; 409 with neither token nor snapshot).
+   */
   providerFor(session: Session | undefined): PortfolioProvider;
+}
+
+/** The Kairo session cookie: signed, HttpOnly, and lasting as long as the session itself. */
+export function setSessionCookie(reply: FastifyReply, id: string, expiresAt: number, secure: boolean) {
+  reply.setCookie(SESSION_COOKIE, id, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure,
+    path: "/",
+    expires: new Date(expiresAt),
+    signed: true,
+  });
 }
 
 export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Date.now, logger = true }: Deps): Promise<FastifyInstance> {
@@ -75,6 +93,8 @@ export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Dat
   await app.register(cookie, { secret });
 
   const sessions = new SessionStore(db, secret, now);
+  const snapshots = new SnapshotStore(db);
+  const amfi = new AmfiNavService(config.AMFI_NAV_URL, fetchImpl, now);
   const kite = config.DATA_MODE === "kite" ? new KiteClient(config.KITE_API_KEY!, fetchImpl) : null;
   const demo = demoProvider(now);
 
@@ -83,7 +103,8 @@ export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Dat
     now,
     kite,
     sessions,
-    amfi: new AmfiNavService(config.AMFI_NAV_URL, fetchImpl, now),
+    snapshots,
+    amfi,
     db,
     publicDemo: !kite && config.DATABASE_READ_ONLY,
     market: new MarketRepo(db, { readOnly: config.DATABASE_READ_ONLY }),
@@ -99,25 +120,34 @@ export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Dat
     },
     providerFor(session) {
       ctx.assertAccess(session);
-      return kite ? kiteProvider(kite, session!.accessToken) : demo;
+      if (!kite) return demo;
+      const s = session!;
+      return resilientProvider(
+        s.kiteToken ? kiteProvider(kite, s.kiteToken) : null,
+        () => snapshotProvider(db, amfi, snapshots, s.userId, s.userName),
+        () => sessions.dropKite(s.id),
+      );
     },
   };
 
   app.decorateRequest("session", undefined);
-  app.addHook("onRequest", async (req) => {
+  app.addHook("onRequest", async (req, reply) => {
     // Demo mode has no sessions; never touch the sessions table (a read-only role cannot see it).
     if (!kite) return;
     const raw = req.cookies[SESSION_COOKIE];
     const unsigned = raw ? req.unsignCookie(raw) : null;
     req.session = unsigned?.valid ? await sessions.get(unsigned.value ?? undefined) : undefined;
+    // Sliding expiry: when the store extended the session, extend the cookie too.
+    if (req.session?.renewed) setSessionCookie(reply, req.session.id, req.session.expiresAt, config.NODE_ENV === "production");
   });
 
   app.setErrorHandler(async (err, req, reply) => {
     if (err instanceof AppError) {
-      // The broker rejected the token: drop our session so the UI routes to login.
+      // The broker rejected the token outside the snapshot-backed provider: forget the
+      // token, keep the Kairo session, and tell the UI to offer a reconnect.
       if (err.code === "session_expired" && req.session) {
-        await sessions.delete(req.session.id);
-        reply.clearCookie(SESSION_COOKIE, { path: "/" });
+        await sessions.dropKite(req.session.id);
+        return reply.status(409).send({ error: "broker_disconnected", message: "Kite session expired. Reconnect Kite to refresh." });
       }
       if (err.statusCode >= 500) req.log.warn({ err }, err.message);
       return reply.status(err.statusCode).send({ error: err.code, message: err.message });

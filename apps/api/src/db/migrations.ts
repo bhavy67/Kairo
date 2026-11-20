@@ -275,6 +275,28 @@ const MIGRATIONS: { id: number; name: string; sql: string }[] = [
       end $$;
     `,
   },
+  {
+    id: 9,
+    name: "long sessions and holdings snapshots",
+    sql: `
+      -- The Kairo session (30 days, sliding) and the Kite token (daily) now have
+      -- separate lifetimes; the token is optional and may be absent.
+      alter table sessions alter column token_enc drop not null;
+      alter table sessions add column kite_expires_at timestamptz;
+      alter table sessions add column last_seen_at timestamptz not null default now();
+      update sessions set kite_expires_at = expires_at;
+      create index sessions_user_idx on sessions (user_id);
+
+      -- Last holdings fetched from the broker, served (revalued at the latest NSE
+      -- close and AMFI NAV) when the Kite token has expired. Personal: not granted
+      -- to the demo role.
+      create table holdings_snapshots (
+        user_id  text primary key,
+        payload  jsonb not null,
+        taken_at timestamptz not null default now()
+      );
+    `,
+  },
 ];
 
 export async function migrate(db: Db): Promise<number[]> {

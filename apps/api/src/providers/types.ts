@@ -10,4 +10,10 @@ export interface PortfolioProvider {
   holdings(): Promise<Holding[]>;
   fundHoldings(): Promise<FundHolding[]>;
   positions(): Promise<Position[]>;
+  /** Where the data came from, once the calls for a request have run. */
+  status?(): ProviderStatus;
+}
+
+export interface ProviderStatus {
+  source: "live" | "snapshot" | "demo";
 }

@@ -1,7 +1,7 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
-import { SESSION_COOKIE, type AppContext } from "../app.js";
+import { SESSION_COOKIE, setSessionCookie, type AppContext } from "../app.js";
 import { loginUrl } from "../kite/client.js";
 
 const STATE_COOKIE = "kairo_oauth_state";
@@ -12,8 +12,7 @@ const Callback = z.object({
   state: z.string().min(1).optional(),
 });
 
-const safeEqual = (a: string, b: string) =>
-  a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+const safeEqual = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 export const authRoutes =
   (ctx: AppContext): FastifyPluginAsync =>
@@ -26,6 +25,7 @@ export const authRoutes =
     const home = "/";
     const failed = (reason: string) => `/login?error=${reason}`;
 
+    /** Sign in, or reconnect Kite on an existing session: the same Kite flow either way. */
     app.get("/login", async (_req, reply) => {
       if (!kite) return reply.redirect(home);
       const state = randomBytes(24).toString("base64url");
@@ -53,36 +53,47 @@ export const authRoutes =
         return reply.redirect(failed("forbidden"));
       }
 
+      // Reconnect: attach the fresh token to the session already in this browser.
+      if (req.session && req.session.userId === user_id) {
+        await sessions.attachKite(req.session.id, access_token);
+        return reply.redirect(home);
+      }
+
       const profile = await kite.profile(access_token);
-      const session = await sessions.create({ userId: user_id, userName: profile.user_name, accessToken: access_token });
-      reply.setCookie(SESSION_COOKIE, session.id, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure,
-        path: "/",
-        expires: new Date(session.expiresAt),
-        signed: true,
-      });
+      const session = await sessions.create({ userId: user_id, userName: profile.user_name, kiteToken: access_token });
+      setSessionCookie(reply, session.id, session.expiresAt, secure);
       return reply.redirect(home);
     });
 
     app.get("/me", async (req, reply) => {
       // readOnly tells the UI to hide controls the public demo would reject anyway.
-      if (!kite) return { authenticated: true, mode: "demo", readOnly: ctx.publicDemo, user: { id: "DEMO", name: "Demo Investor" } };
+      if (!kite) return { authenticated: true, mode: "demo", readOnly: ctx.publicDemo, user: { id: "DEMO", name: "Demo Investor" }, kite: null };
       if (!req.session) return reply.status(401).send({ authenticated: false, mode: "kite" });
+      const s = req.session;
       return {
         authenticated: true,
         mode: "kite",
         readOnly: false,
-        user: { id: req.session.userId, name: req.session.userName },
-        expiresAt: new Date(req.session.expiresAt).toISOString(),
+        user: { id: s.userId, name: s.userName },
+        expiresAt: new Date(s.expiresAt).toISOString(),
+        kite: { connected: s.kiteToken !== null, expiresAt: s.kiteExpiresAt ? new Date(s.kiteExpiresAt).toISOString() : null },
       };
     });
 
     app.post("/logout", async (req, reply) => {
       if (req.session) {
-        await kite?.invalidateSession(req.session.accessToken);
+        if (req.session.kiteToken) await kite?.invalidateSession(req.session.kiteToken);
         await sessions.delete(req.session.id);
+      }
+      reply.clearCookie(SESSION_COOKIE, { path: "/" });
+      return reply.status(204).send();
+    });
+
+    /** Sign out on every device: ends all of this user's sessions. */
+    app.post("/logout-all", async (req, reply) => {
+      if (req.session) {
+        if (req.session.kiteToken) await kite?.invalidateSession(req.session.kiteToken);
+        await sessions.deleteForUser(req.session.userId);
       }
       reply.clearCookie(SESSION_COOKIE, { path: "/" });
       return reply.status(204).send();

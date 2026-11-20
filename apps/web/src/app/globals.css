@@ -416,3 +416,27 @@ th button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; bo
 /* ------------------------------------------------------------ global */
 .cues { display: grid; gap: 8px; }
 .cues p { margin: 0; font-size: 17px; line-height: 1.5; letter-spacing: -0.01em; color: var(--ink); max-width: 72ch; }
+
+/* ----------------------------------------------- account menu, notices */
+.menu { position: relative; }
+.menu > summary { list-style: none; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-2); }
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > summary:hover { border-color: var(--line-strong); }
+.kite-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-4); }
+.kite-dot.on { background: var(--gain); }
+.menu-panel {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 50; min-width: 230px; display: grid; gap: 2px; padding: 10px;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px;
+  box-shadow: 0 16px 40px -20px color-mix(in srgb, var(--ink) 40%, transparent); animation: rise 160ms var(--ease) both;
+}
+.menu-panel a, .menu-panel button {
+  display: flex; align-items: center; gap: 8px; text-align: left; padding: 8px 10px; border-radius: 8px; border: 0; background: none;
+  color: var(--ink); font-size: 13px; cursor: pointer;
+}
+.menu-panel a:hover, .menu-panel button:hover { background: var(--surface-2); }
+.notice {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 16px;
+  padding: 12px 16px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); color: var(--ink-2); font-size: 13px;
+}
+.menu .initial { display: none; font-weight: 600; font-size: 13px; }
+@media (max-width: 760px) { .menu .initial { display: inline; } .menu > summary { padding: 6px 10px; } }

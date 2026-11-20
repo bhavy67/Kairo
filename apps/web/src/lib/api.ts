@@ -72,6 +72,8 @@ export interface Me {
   mode: "demo" | "kite";
   /** Public demo: writes are rejected, so the UI hides them. */
   readOnly: boolean;
+  /** Broker link, separate from the Kairo session: Zerodha expires it daily. Null in demo mode. */
+  kite?: { connected: boolean; expiresAt: string | null } | null;
   user?: { id: string; name: string };
   expiresAt?: string;
 }
@@ -111,4 +113,5 @@ export const api = {
   symbols: (q: string) => getJson<{ results: { symbol: string; name: string }[] }>(`/api/symbols?q=${encodeURIComponent(q)}`),
   global: () => getJson<{ quotes: GlobalQuote[]; cues: string | null; unavailable: string[]; sources: string }>("/api/global"),
   logout: () => fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }),
+  logoutAll: () => fetch("/api/auth/logout-all", { method: "POST", credentials: "same-origin" }),
 };
