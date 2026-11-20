@@ -369,3 +369,58 @@ describe("public demo (read-only database)", () => {
     expect((await app.inject("/api/market/overview")).json()).toMatchObject({ asOf: null });
   });
 });
+
+describe("plan", () => {
+  const plan = {
+    version: 1,
+    income: 100000,
+    essentials: 40000,
+    lifestyle: 20000,
+    emis: 0,
+    emergency: { months: 6, saved: 0 },
+    insurance: { term: true, health: true },
+    goals: [{ id: "g", name: "Home", costToday: 2000000, targetYear: 2032, priority: "must" }],
+    risk: [],
+    assumptions: { inflation: 0.06, equity: 0.11, debt: 0.07, gold: 0.07 },
+  };
+
+  it("saves per user with a conflict check, and reports today's allocation", async () => {
+    const { fetchImpl } = fakeKite();
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    expect((await app.inject("/api/plan")).statusCode).toBe(401);
+    const sid = (await signIn(fetchImpl)).sid!;
+    const cookies = { kairo_sid: sid };
+
+    const empty = (await app.inject({ url: "/api/plan", cookies })).json();
+    expect(empty).toMatchObject({ plan: null, updatedAt: null, sample: false });
+    expect(empty.actual.total).toBe(360 + 1000); // 3 INFY (incl. T1) at 120, plus cash as debt
+
+    const bad = await app.inject({ method: "PUT", url: "/api/plan", cookies, payload: { plan: { ...plan, income: -1 }, updatedAt: null } });
+    expect(bad.statusCode).toBe(400);
+
+    const first = await app.inject({ method: "PUT", url: "/api/plan", cookies, payload: { plan: { ...plan, goals: [{ ...plan.goals[0], saved: 0 }] }, updatedAt: null } });
+    expect(first.statusCode).toBe(200);
+    const v1 = first.json().updatedAt as string;
+
+    // A second "first save" (another tab that read before v1) is refused.
+    const stale = await app.inject({ method: "PUT", url: "/api/plan", cookies, payload: { plan: { ...plan, goals: [] }, updatedAt: null } });
+    expect(stale.statusCode).toBe(409);
+
+    const second = await app.inject({ method: "PUT", url: "/api/plan", cookies, payload: { plan: { ...plan, income: 120000, goals: [] }, updatedAt: v1 } });
+    expect(second.statusCode).toBe(200);
+    expect((await app.inject({ method: "PUT", url: "/api/plan", cookies, payload: { plan: { ...plan, goals: [] }, updatedAt: v1 } })).statusCode).toBe(409);
+
+    const saved = (await app.inject({ url: "/api/plan", cookies })).json();
+    expect(saved.plan.income).toBe(120000);
+    expect(saved.updatedAt).toBe(second.json().updatedAt);
+  });
+
+  it("shows the public demo a sample plan it cannot save", async () => {
+    app = await buildApp({ db: await testDb(), config: loadConfig({ NODE_ENV: "production", DATABASE_READ_ONLY: "true" }), logger: false });
+    const res = (await app.inject("/api/plan")).json();
+    expect(res.sample).toBe(true);
+    expect(res.plan.goals.length).toBeGreaterThan(0);
+    expect(res.actual.total).toBeGreaterThan(0);
+    expect((await app.inject({ method: "PUT", url: "/api/plan", payload: { plan: res.plan, updatedAt: null } })).statusCode).toBe(403);
+  });
+});

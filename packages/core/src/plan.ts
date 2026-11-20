@@ -23,7 +23,7 @@ export interface PlanGoal {
   /** Already set aside for this goal, in rupees. */
   saved: number;
   /** Goal-specific inflation (education runs hotter than general prices). Defaults to the plan's. */
-  inflation?: number;
+  inflation?: number | undefined;
 }
 
 export interface PlanInput {

@@ -306,6 +306,19 @@ const MIGRATIONS: { id: number; name: string; sql: string }[] = [
       alter table sessions add column user_short text;
     `,
   },
+  {
+    id: 11,
+    name: "plans",
+    sql: `
+      -- One financial plan per user, stored as validated JSON. Personal: not
+      -- granted to the demo role.
+      create table plans (
+        user_id    text primary key,
+        payload    jsonb not null,
+        updated_at timestamptz not null default now()
+      );
+    `,
+  },
 ];
 
 export async function migrate(db: Db): Promise<number[]> {

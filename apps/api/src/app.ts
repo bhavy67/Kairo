@@ -21,6 +21,7 @@ import { globalRoutes } from "./routes/global.js";
 import { telegramNotifier, type Notifier } from "./signals/notifier.js";
 import { SignalsRepo } from "./signals/repo.js";
 import { portfolioRoutes } from "./routes/portfolio.js";
+import { planRoutes } from "./routes/plan.js";
 import { SessionStore, type Session } from "./session.js";
 
 declare module "fastify" {
@@ -175,6 +176,7 @@ export async function buildApp({ config, db, fetch: fetchImpl = fetch, now = Dat
   await app.register(tradesRoutes(ctx), { prefix: "/api" });
   await app.register(stockRoutes(ctx), { prefix: "/api" });
   await app.register(globalRoutes(ctx), { prefix: "/api" });
+  await app.register(planRoutes(ctx), { prefix: "/api" });
   await app.register(cronRoutes(ctx, fetchImpl), { prefix: "/api/cron" });
 
   return app;
