@@ -54,14 +54,16 @@ export const authRoutes =
         return reply.redirect(failed("forbidden"));
       }
 
+      const profile = await kite.profile(access_token);
+      const names = { userName: profile.user_name, userShort: profile.user_shortname };
+
       // Reconnect: attach the fresh token to the session already in this browser.
       if (req.session && req.session.userId === user_id) {
-        await sessions.attachKite(req.session.id, access_token);
+        await sessions.attachKite(req.session.id, access_token, names);
         return reply.redirect(home);
       }
 
-      const profile = await kite.profile(access_token);
-      const session = await sessions.create({ userId: user_id, userName: profile.user_name, kiteToken: access_token });
+      const session = await sessions.create({ userId: user_id, ...names, kiteToken: access_token });
       setSessionCookie(reply, session.id, session.expiresAt, secure);
       return reply.redirect(home);
     });
@@ -76,7 +78,7 @@ export const authRoutes =
         mode: "kite",
         readOnly: false,
         // Legal name as Kite gives it, shortened for display (first name + surname).
-        user: { id: s.userId, name: displayName(s.userName) },
+        user: { id: s.userId, name: displayName(s.userName, s.userShort) },
         expiresAt: new Date(s.expiresAt).toISOString(),
         kite: { connected: s.kiteToken !== null, expiresAt: s.kiteExpiresAt ? new Date(s.kiteExpiresAt).toISOString() : null },
       };

@@ -15,7 +15,10 @@ const RENEW_AFTER_MS = DAY_MS;
 export interface Session {
   id: string;
   userId: string;
+  /** Legal name as the broker gives it. */
   userName: string;
+  /** Broker's short name (first name), when known. */
+  userShort: string | null;
   /** Kairo session expiry (epoch ms). */
   expiresAt: number;
   /** Kite access token, or null when it has expired or was never attached. */
@@ -60,6 +63,7 @@ class TokenCipher {
 interface Row {
   user_id: string;
   user_name: string;
+  user_short: string | null;
   token_enc: string | null;
   expires_ms: number;
   kite_ms: number | null;
@@ -81,7 +85,7 @@ export class SessionStore {
     this.cipher = new TokenCipher(secret);
   }
 
-  async create(data: { userId: string; userName: string; kiteToken: string }): Promise<Session> {
+  async create(data: { userId: string; userName: string; userShort: string | null; kiteToken: string }): Promise<Session> {
     const id = randomBytes(32).toString("base64url");
     const now = this.now();
     const expiresAt = now + SESSION_DAYS * DAY_MS;
@@ -89,18 +93,18 @@ export class SessionStore {
     // Opportunistic cleanup keeps the table tiny without a separate job.
     await this.db.query("delete from sessions where expires_at <= to_timestamp($1)", [ts(now)]);
     await this.db.query(
-      `insert into sessions (id_hash, user_id, user_name, token_enc, expires_at, kite_expires_at, last_seen_at)
-       values ($1, $2, $3, $4, to_timestamp($5), to_timestamp($6), to_timestamp($7))`,
-      [hashId(id), data.userId, data.userName, this.cipher.seal(data.kiteToken), ts(expiresAt), ts(kiteExpiresAt), ts(now)],
+      `insert into sessions (id_hash, user_id, user_name, user_short, token_enc, expires_at, kite_expires_at, last_seen_at)
+       values ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), to_timestamp($8))`,
+      [hashId(id), data.userId, data.userName, data.userShort, this.cipher.seal(data.kiteToken), ts(expiresAt), ts(kiteExpiresAt), ts(now)],
     );
-    return { id, userId: data.userId, userName: data.userName, expiresAt, kiteToken: data.kiteToken, kiteExpiresAt, renewed: false };
+    return { id, userId: data.userId, userName: data.userName, userShort: data.userShort, expiresAt, kiteToken: data.kiteToken, kiteExpiresAt, renewed: false };
   }
 
   async get(id: string | undefined): Promise<Session | undefined> {
     if (!id) return undefined;
     const now = this.now();
     const [row] = await this.db.query<Row>(
-      `select user_id, user_name, token_enc,
+      `select user_id, user_name, user_short, token_enc,
               (extract(epoch from expires_at) * 1000)::float8 as expires_ms,
               (extract(epoch from kite_expires_at) * 1000)::float8 as kite_ms,
               (extract(epoch from last_seen_at) * 1000)::float8 as seen_ms
@@ -134,6 +138,7 @@ export class SessionStore {
       id,
       userId: row.user_id,
       userName: row.user_name,
+      userShort: row.user_short,
       expiresAt,
       kiteToken,
       kiteExpiresAt: kiteToken ? row.kite_ms : null,
@@ -141,14 +146,13 @@ export class SessionStore {
     };
   }
 
-  /** Reconnect: a fresh Kite token on an existing session. */
-  async attachKite(id: string, kiteToken: string): Promise<number> {
+  /** Reconnect: a fresh Kite token on an existing session; names refreshed from the profile. */
+  async attachKite(id: string, kiteToken: string, names: { userName: string; userShort: string | null }): Promise<number> {
     const kiteExpiresAt = nextKiteExpiry(this.now());
-    await this.db.query("update sessions set token_enc = $2, kite_expires_at = to_timestamp($3) where id_hash = $1", [
-      hashId(id),
-      this.cipher.seal(kiteToken),
-      ts(kiteExpiresAt),
-    ]);
+    await this.db.query(
+      "update sessions set token_enc = $2, kite_expires_at = to_timestamp($3), user_name = $4, user_short = $5 where id_hash = $1",
+      [hashId(id), this.cipher.seal(kiteToken), ts(kiteExpiresAt), names.userName, names.userShort],
+    );
     return kiteExpiresAt;
   }
 

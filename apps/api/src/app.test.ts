@@ -24,7 +24,7 @@ function fakeKite(overrides: Record<string, Route> = {}) {
   const routes: Record<string, Route> = {
     "POST /session/token": () => ok({ user_id: "AB1234", access_token: "tok" }),
     "DELETE /session/token": () => ok(true),
-    "GET /user/profile": () => ok({ user_id: "AB1234", user_name: "BHAVY RAJESHKUMAR LADANI", broker: "ZERODHA" }),
+    "GET /user/profile": () => ok({ user_id: "AB1234", user_name: "LADANI BHAVY RAJESHBHAI", user_shortname: "Bhavy", broker: "ZERODHA" }),
     "GET /user/margins": () => ok({ equity: { net: 1000, utilised: { debits: 0 } } }),
     "GET /portfolio/holdings": () =>
       ok([{ tradingsymbol: "INFY", exchange: "NSE", isin: "INE009A01021", quantity: 2, t1_quantity: 1, average_price: 100, last_price: 120, close_price: 110, extra_field: 1 }]),

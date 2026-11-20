@@ -297,6 +297,15 @@ const MIGRATIONS: { id: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: 10,
+    name: "session short name",
+    sql: `
+      -- Kite's short name (first name), used to show "first name + surname"
+      -- whatever order the legal name is in.
+      alter table sessions add column user_short text;
+    `,
+  },
 ];
 
 export async function migrate(db: Db): Promise<number[]> {

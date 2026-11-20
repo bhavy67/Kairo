@@ -42,6 +42,8 @@ export const KitePositions = z.object({ net: z.array(KitePosition), day: z.array
 export const KiteProfile = z.object({
   user_id: z.string(),
   user_name: z.string(),
+  /** Zerodha's short name: the first name. Anchors display-name formatting. */
+  user_shortname: z.string().nullish().transform((v) => v ?? null),
   broker: z.string(),
 });
 
