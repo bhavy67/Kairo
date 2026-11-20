@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "@/lib/api";
-import { IconMarkets, IconPortfolio, IconScreener, IconSignOut, IconToday, IconWatch } from "./Icons";
+import { IconMarkets, IconPlan, IconPortfolio, IconSignOut, IconToday, IconWatch } from "./Icons";
 import { CommandPalette } from "./CommandPalette";
 import { Logo } from "./Logo";
 import { Loading } from "./States";
@@ -14,8 +14,8 @@ import { ThemeToggle } from "./ThemeToggle";
 export const NAV = [
   { href: "/", label: "Today", Icon: IconToday, match: (p: string) => p === "/" },
   { href: "/portfolio", label: "Portfolio", Icon: IconPortfolio, match: (p: string) => p.startsWith("/portfolio") },
+  { href: "/plan", label: "Plan", Icon: IconPlan, match: (p: string) => p.startsWith("/plan") },
   { href: "/markets", label: "Markets", Icon: IconMarkets, match: (p: string) => p.startsWith("/markets") },
-  { href: "/screener", label: "Screener", Icon: IconScreener, match: (p: string) => p.startsWith("/screener") },
   { href: "/watch", label: "Watch", Icon: IconWatch, match: (p: string) => p.startsWith("/watch") },
 ];
 

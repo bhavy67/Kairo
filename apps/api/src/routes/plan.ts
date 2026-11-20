@@ -29,7 +29,7 @@ export const PlanSchema: z.ZodType<PlanInput> = z.object({
       }),
     )
     .max(20),
-  risk: z.array(z.number().int().min(1).max(3)).max(5),
+  risk: z.array(z.number().int().min(0).max(3)).max(5),
   assumptions: z.object({ inflation: rate, equity: rate, debt: rate, gold: rate }),
 });
 

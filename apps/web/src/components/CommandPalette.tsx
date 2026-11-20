@@ -10,9 +10,10 @@ const PAGES = [
   { label: "Holdings", href: "/portfolio" },
   { label: "Mutual funds", href: "/portfolio/funds" },
   { label: "Returns", href: "/portfolio/returns", hint: "XIRR, realised gains" },
+  { label: "Plan", href: "/plan", hint: "goals, SIPs, allocation" },
   { label: "Markets · India", href: "/markets" },
   { label: "Markets · Global", href: "/markets/global" },
-  { label: "Screener", href: "/screener", hint: "stocks of the day" },
+  { label: "Markets · Screener", href: "/markets/screener", hint: "stocks of the day" },
   { label: "Watchlist", href: "/watch" },
   { label: "Alerts", href: "/watch/alerts" },
 ];

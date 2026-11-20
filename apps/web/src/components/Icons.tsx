@@ -13,6 +13,10 @@ export const IconMarkets = () => (
 export const IconScreener = () => (
   <svg {...base}><path d="M3 5h14M5.5 10h9M8.5 15h3" /></svg>
 );
+/** A target: a goal with a path to it. */
+export const IconPlan = () => (
+  <svg {...base}><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3.2" /><circle cx="10" cy="10" r=".7" fill="currentColor" /></svg>
+);
 export const IconWatch = () => (
   <svg {...base}><path d="M2.5 10s2.7-5 7.5-5 7.5 5 7.5 5-2.7 5-7.5 5-7.5-5-7.5-5z" /><circle cx="10" cy="10" r="2.3" /></svg>
 );

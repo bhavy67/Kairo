@@ -39,7 +39,7 @@ export interface PlanInput {
   emergency: { months: number; saved: number };
   insurance: { term: boolean; health: boolean };
   goals: PlanGoal[];
-  /** Answers to RISK_QUESTIONS (1 = most cautious, 3 = most aggressive). Empty = not answered. */
+  /** Answers to RISK_QUESTIONS (1 = most cautious, 3 = most aggressive, 0 = not answered yet). */
   risk: number[];
   /** Annual rates as fractions. */
   assumptions: { inflation: number; equity: number; debt: number; gold: number };
@@ -76,7 +76,7 @@ export type RiskProfile = "conservative" | "balanced" | "aggressive";
 export const EQUITY_CAP: Record<RiskProfile, number> = { conservative: 0.4, balanced: 0.6, aggressive: 0.8 };
 
 export function riskProfile(answers: readonly number[]): { profile: RiskProfile; score: number | null } {
-  if (answers.length !== RISK_QUESTIONS.length) return { profile: "balanced", score: null };
+  if (answers.length !== RISK_QUESTIONS.length || answers.some((a) => !(a >= 1 && a <= 3))) return { profile: "balanced", score: null };
   const score = answers.reduce((s, a) => s + a, 0);
   return { profile: score <= 8 ? "conservative" : score <= 12 ? "balanced" : "aggressive", score };
 }

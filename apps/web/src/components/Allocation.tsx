@@ -9,7 +9,7 @@ interface Part {
 }
 
 /** A segmented bar: one whole split into parts. Labels print inside only when they fit. */
-export function Allocation({ parts }: { parts: Part[] }) {
+export function Allocation({ parts, format = money }: { parts: Part[]; format?: (v: number) => string }) {
   const total = parts.reduce((s, p) => s + p.value, 0);
   if (total <= 0) return <p className="muted">Nothing to allocate yet.</p>;
   const visible = parts.filter((p) => p.value > 0);
@@ -19,7 +19,7 @@ export function Allocation({ parts }: { parts: Part[] }) {
         {visible.map((p) => {
           const w = p.value / total;
           return (
-            <div key={p.label} style={{ flexGrow: w, flexBasis: 0, background: p.color, color: p.text ?? "var(--bg)" }} title={`${p.label}: ${money(p.value)} (${share(w)})`}>
+            <div key={p.label} style={{ flexGrow: w, flexBasis: 0, background: p.color, color: p.text ?? "var(--bg)" }} title={`${p.label}: ${format(p.value)} (${share(w)})`}>
               {w >= 0.08 ? share(w) : ""}
             </div>
           );
@@ -29,7 +29,7 @@ export function Allocation({ parts }: { parts: Part[] }) {
         {visible.map((p) => (
           <span key={p.label}>
             <i style={{ background: p.color }} />
-            {p.label} · {money(p.value)}
+            {p.label} · {format(p.value)}
           </span>
         ))}
       </figcaption>

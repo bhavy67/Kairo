@@ -1,4 +1,4 @@
-import type { AlertKind, GlobalQuote, IngestRun, MarketOverview, PortfolioSnapshot, ScreenRow, ScreenRule, TradeSummary, WatchItem } from "@kairo/core";
+import type { ActualAllocation, AlertKind, GlobalQuote, IngestRun, MarketOverview, PlanInput, PortfolioSnapshot, ScreenRow, ScreenRule, TradeSummary, WatchItem } from "@kairo/core";
 
 export interface StockDetail {
   symbol: string;
@@ -117,6 +117,13 @@ export const api = {
   clearTrades: () => send<void>("/api/trades", "DELETE"),
   stock: (symbol: string) => getJson<StockDetail>(`/api/stocks/${encodeURIComponent(symbol)}`),
   symbols: (q: string) => getJson<{ results: { symbol: string; name: string }[] }>(`/api/symbols?q=${encodeURIComponent(q)}`),
+  plan: () => getJson<{ plan: PlanInput | null; updatedAt: string | null; sample: boolean; actual: ActualAllocation | null }>("/api/plan"),
+  savePlan: (plan: PlanInput, updatedAt: string | null) =>
+    getJson<{ updatedAt: string }>("/api/plan", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ plan, updatedAt }),
+    }),
   global: () => getJson<{ quotes: GlobalQuote[]; cues: string | null; unavailable: string[]; sources: string }>("/api/global"),
   logout: () => fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }),
   logoutAll: () => fetch("/api/auth/logout-all", { method: "POST", credentials: "same-origin" }),

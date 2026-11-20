@@ -45,6 +45,7 @@ describe("riskProfile", () => {
   });
   it("assumes balanced until all questions are answered", () => {
     expect(riskProfile([3, 3])).toEqual({ profile: "balanced", score: null });
+    expect(riskProfile([3, 0, 3, 3, 3])).toEqual({ profile: "balanced", score: null });
   });
 });
 

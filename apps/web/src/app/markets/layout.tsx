@@ -6,7 +6,7 @@ export default function MarketsLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <PageTitle title="Markets" />
-      <SubNav label="Markets" items={[{ href: "/markets", label: "India" }, { href: "/markets/global", label: "Global" }]} />
+      <SubNav label="Markets" items={[{ href: "/markets", label: "India" }, { href: "/markets/global", label: "Global" }, { href: "/markets/screener", label: "Screener" }]} />
       {children}
     </>
   );

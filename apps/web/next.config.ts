@@ -23,6 +23,7 @@ const config: NextConfig = {
       { source: "/global", destination: "/markets/global", permanent: true },
       { source: "/watchlist", destination: "/watch", permanent: true },
       { source: "/alerts", destination: "/watch/alerts", permanent: true },
+      { source: "/screener", destination: "/markets/screener", permanent: true },
     ];
   },
   async rewrites() {
