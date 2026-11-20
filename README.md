@@ -1,87 +1,94 @@
 # Kairo
 
-A personal market desk for an Indian retail investor: portfolio, markets and signals in one quiet dashboard, backed by Zerodha Kite.
+**Your money, the market and your plan, in one calm place.**
 
-*Kairos*: the right moment.
+Kairo is a personal investing desk for Indian investors who use Zerodha. Open it once a day and you know three things: what you own and how it is doing, what the market did, and whether you are on track for the things you are saving for.
 
-![status](https://img.shields.io/badge/phase-4%20·%20signals-0b0b0b)
+No tips, no hype, no flashing tickers. Just your numbers, explained plainly.
 
-Live demo: https://kairo-demo.bhavyladani.in (demo portfolio and sample tradebook, real NSE end-of-day data). The owner's instance at kairo.bhavyladani.in is private.
+**[Try the live demo →](https://kairo-demo.bhavyladani.in)** A sample portfolio with real NSE market data. No sign-up.
 
-## What it does today
+![Kairo's Today page: portfolio value, what changed in the market, index trends and allocation](docs/screenshots/today.png)
 
-- **Overview**: total value, invested, P&L, today's change, allocation across equity, mutual funds and cash.
-- **Holdings**: equity holdings with average cost, LTP, P&L, day change and weight. Sortable.
-- **Funds**: Coin mutual fund holdings with NAV, P&L and weight.
-- **Markets** (NSE end of day): headline indices with trend, India VIX, breadth across the Nifty 500, sector heatmap, top movers and volume spikes.
-- **Global**: S&P 500, Nasdaq, Dow, Nikkei, US 10-year yield, Brent and rupee rates, with an overnight-cues summary for the Indian open.
-- **Returns** from your Zerodha tradebook: XIRR per stock and overall, realised P&L by financial year (short-term, long-term, intraday), FIFO lots with bonus and split handling, and reconciliation against broker holdings.
-- **Screener**: "stocks of the day" from six rule-based presets (breakouts, momentum, pullbacks, 200-day reclaims, unusual volume, oversold large caps), a rule builder, and saved screens.
-- **Alerts**: price crosses, big moves, 200-day crosses and new screen entrants, evaluated after each NSE close, with an optional Telegram digest.
-- **Watchlist** of NSE symbols with RSI, trend and 3-month return.
-- **Sector allocation** of your equity holdings.
-- **Kite login** with a CSRF-protected OAuth flow, restricted to one Kite account.
-- **Demo mode**: runs with a fake portfolio and no broker account, so anyone can clone and try it.
+*Kairos (Greek): the right moment.*
 
-Order placement is next. See the [roadmap](docs/roadmap.md).
+---
 
-## Quick start (demo mode)
+## What you can do
 
-```bash
-pnpm install
-pnpm --filter @kairo/core build
-pnpm dev
-```
+### See everything you own, in one view
 
-Open http://localhost:3000. No `.env` and no database server needed: the API uses an embedded Postgres (PGlite) in `apps/api/.data`.
+Stocks, mutual funds and cash from your Zerodha account, added up properly. Total value, what you put in, what you have made, today's change, and how your money is spread across sectors.
 
-Load market history once (about 5 minutes, ~270 sessions from the NSE archive):
+![Holdings with average cost, current price, profit and weight](docs/screenshots/portfolio.png)
 
-```bash
-pnpm --filter @kairo/api backfill
-```
+### Plan for the things that matter
 
-After that the API imports each new trading day by itself after 18:30 IST.
+Tell Kairo what you earn and spend, and what you are saving for: a home, a child's education, retirement. It works out:
 
-## Run against your Kite account
+- how much you can invest each month
+- whether your emergency fund is big enough, and how to fill it first
+- the monthly amount each goal needs, after inflation
+- which goals your money covers, and which it does not
+- how your savings should be split between equity, debt and gold, compared with what you actually hold
 
-1. Create a **Personal** app at [developers.kite.trade](https://developers.kite.trade). It is free and covers holdings, positions, funds and orders.
-2. Set its redirect URL to `http://localhost:3000/api/auth/callback`.
-3. `cp .env.example .env`, set `DATA_MODE=kite` and fill in the Kite keys, your client ID and a session secret.
-4. `pnpm dev`, then sign in with Kite.
+It shows the trade-offs and lets you decide. It never recommends a specific fund, and every assumption is on screen for you to change.
 
-Kite expires every access token around 06:00 IST, so expect to sign in once a day. That is a broker rule, not a bug.
+![The Plan page: monthly surplus, next steps and goal-by-goal monthly amounts](docs/screenshots/plan.png)
 
-## Stack
+### Understand the market in a minute
 
-| Layer | Choice |
-|---|---|
-| Web | Next.js (App Router), React, TanStack Query |
-| API | Fastify, Zod, Node 22 |
-| Data | Postgres (PGlite in dev/tests), NSE end-of-day archive |
-| Domain | `@kairo/core`: pure TypeScript, broker-agnostic, unit tested |
-| Tooling | pnpm workspaces, Vitest, GitHub Actions, Docker |
+Every evening after the NSE closes, Kairo summarises the day: the major indices, how many stocks rose or fell, which sectors moved, and the biggest movers. Before the market opens, it adds overnight cues from the US and Asia, oil and the rupee.
 
-```
-apps/web       Next.js dashboard; proxies /api to the API
-apps/api       Fastify server: Kite adapter, sessions, NSE import, market SQL
-packages/core  Domain types, portfolio math, NSE/AMFI parsers, market stats
-docs/          Architecture, decision records, roadmap
-```
+![Indian indices with trends, valuations and market breadth](docs/screenshots/markets.png)
 
-Design language: [docs/design.md](docs/design.md). Read [docs/architecture.md](docs/architecture.md) for how the pieces fit and why, and [docs/deploy.md](docs/deploy.md) for hosting (Vercel + Supabase, or Docker).
+### Find stocks worth a closer look
 
-## Scripts
+"Stocks of the day" are short lists built from clear rules, such as new 52-week highs on heavy volume or strong stocks pulling back. Each list says exactly why a stock is on it. You can also build and save your own rules.
 
-| Command | |
-|---|---|
-| `pnpm dev` | API on :4000, web on :3000 |
-| `pnpm test` | Unit and integration tests |
-| `pnpm typecheck` | Strict TypeScript across the workspace |
-| `pnpm build` | Production builds |
-| `pnpm --filter @kairo/api backfill` | Load NSE history (`-- --days 30` for less) |
-| `docker compose up --build` | Postgres, API and web containers (reads `.env`) |
+![Stocks of the day: breakouts, momentum leaders and pullbacks](docs/screenshots/screener.png)
 
-## Disclaimer
+### Look up any stock
 
-A personal tool, not investment advice. Indicators and signals describe what prices did, not what they will do.
+Search any NSE stock to see its price history, adjusted for bonuses and splits, and a plain summary of its trend.
+
+![A stock page with a six-month chart and trend facts](docs/screenshots/stock.png)
+
+### Know how you have really done
+
+Upload your Zerodha tradebook and Kairo shows your true annual return on every stock, realised gains for each financial year (split into short-term, long-term and intraday for tax time), and any gaps between your trades and your holdings.
+
+![Returns: annualised return, realised and unrealised gains](docs/screenshots/returns.png)
+
+### Keep watch without staring at screens
+
+Keep a watchlist, and set alerts for a price level, a big move, or a stock entering one of your lists. Kairo checks them after every close, and can message you on Telegram.
+
+---
+
+## Made to be calm
+
+- **Light and dark**, matching your device or chosen by you.
+- **Works on your phone**, with a bottom bar for one-thumb use.
+- **Quick search**: press ⌘K or / to jump to any page or stock.
+- **Colour only means something**: green and red for gains and losses, everything else in black, white and grey.
+
+<p align="center"><img src="docs/screenshots/phone.png" alt="Kairo on a phone: Today and Plan" width="620"></p>
+
+![Kairo in dark mode](docs/screenshots/today-dark.png)
+
+## Your data stays yours
+
+- **Read-only.** Kairo reads your Zerodha account. It cannot place orders or move money.
+- **Private.** Your holdings, plan and trades are never shown on the public demo, and your broker connection is stored encrypted.
+- **One owner.** A private Kairo only lets its owner's Zerodha account sign in.
+
+## Good to know
+
+- **Holdings use Zerodha's latest prices.** Market pages use official NSE closing data, refreshed each evening.
+- **Zerodha asks you to reconnect once a day.** That is their rule. Kairo keeps you signed in for 30 days and shows your last known holdings until you reconnect.
+- **Not investment advice.** Kairo describes what prices did and does the arithmetic on your numbers. Decisions are yours.
+
+---
+
+Building or hosting it yourself? See the [developer guide](docs/development.md).
