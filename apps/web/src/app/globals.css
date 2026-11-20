@@ -480,3 +480,34 @@ th button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; bo
 .pill { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink-3); }
 .pill.funded { color: var(--gain); border-color: currentColor; }
 .pill.unfunded { color: var(--loss); border-color: currentColor; }
+
+/* ------------------------------------------------------------- live timer */
+/* The refresh cycle as an instrument: a ring that drains to the next fetch. */
+.hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.live {
+  display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 10px 0 6px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--ink-3);
+  font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+  transition: border-color var(--dur), color var(--dur);
+}
+.live:hover { border-color: var(--ink-3); color: var(--ink); }
+.live:disabled { cursor: default; }
+.live.on .live-label { color: var(--ink); }
+.live-secs { text-transform: none; min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-4); letter-spacing: 0; }
+.live-ring { width: 18px; height: 18px; transform: rotate(-90deg); overflow: visible; }
+.live-ring circle { fill: none; stroke-width: 2; }
+.live-ring .track { stroke: var(--line-strong); }
+.live-ring .drain { stroke: var(--ink); stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; animation: live-drain linear forwards; }
+.live-ring .spin { stroke: var(--ink); stroke-linecap: round; stroke-dasharray: 0.25 0.75; transform-origin: 10px 10px; animation: live-spin 800ms linear infinite; }
+.live-ring .core { fill: var(--ink-4); stroke: none; transform-origin: 10px 10px; transition: fill 600ms var(--ease); }
+.live.on .live-ring .core { fill: var(--ink); }
+.live.flash-gain .live-ring .core { fill: var(--gain-fill); animation: live-beat 700ms var(--ease); }
+.live.flash-loss .live-ring .core { fill: var(--loss-fill); animation: live-beat 700ms var(--ease); }
+.live.flash-flat .live-ring .core { animation: live-beat 700ms var(--ease); }
+@keyframes live-drain { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 1; } }
+@keyframes live-spin { to { transform: rotate(360deg); } }
+@keyframes live-beat { 0% { transform: scale(1); } 35% { transform: scale(1.7); } 100% { transform: scale(1); } }
+/* Reduced motion: no draining or spinning; the seconds still count down. */
+@media (prefers-reduced-motion: reduce) {
+  .live-ring .drain, .live-ring .spin { animation: none !important; stroke-dasharray: none; }
+}

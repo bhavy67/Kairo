@@ -21,6 +21,15 @@ export function isMarketOpen(now = new Date()): boolean {
   return day >= 1 && day <= 5 && mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30;
 }
 
+/** Milliseconds until the next 09:15 IST open, if it is later today; otherwise null. */
+export function msToOpenToday(now = new Date()): number | null {
+  const ist = new Date(now.getTime() + IST_OFFSET_MIN * 60_000);
+  const day = ist.getUTCDay();
+  const mins = ist.getUTCHours() * 60 + ist.getUTCMinutes() + ist.getUTCSeconds() / 60;
+  if (day < 1 || day > 5 || mins >= 9 * 60 + 15) return null;
+  return (9 * 60 + 15 - mins) * 60_000;
+}
+
 export const timeIst = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
 

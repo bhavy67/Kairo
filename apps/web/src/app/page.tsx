@@ -8,6 +8,7 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { BarList } from "@/components/BarList";
 import { Change } from "@/components/Change";
 import { HoldingsTable } from "@/components/HoldingsTable";
+import { LiveTimer } from "@/components/LiveTimer";
 import { PageTitle } from "@/components/PageTitle";
 import { Sparkline } from "@/components/Sparkline";
 import { ErrorCard, Loading } from "@/components/States";
@@ -19,7 +20,7 @@ import { usePortfolio } from "@/lib/usePortfolio";
 const PULSE = ["Nifty 50", "Nifty Bank", "India VIX"];
 
 export default function Today() {
-  const { data, error, isPending, refetch, isFetching } = usePortfolio();
+  const { data, error, isPending, refetch, isFetching, dataUpdatedAt } = usePortfolio();
   const market = useQuery({ queryKey: ["market"], queryFn: api.market, staleTime: 5 * 60_000 });
   const alerts = useQuery({ queryKey: ["alerts"], queryFn: api.alerts, staleTime: 5 * 60_000 });
   const screens = useQuery({ queryKey: ["today"], queryFn: api.today, staleTime: 5 * 60_000 });
@@ -39,10 +40,8 @@ export default function Today() {
       <PageTitle
         title="Today"
         meta={
-          <span aria-live="polite">
-            {isFetching
-              ? "Refreshing…"
-              : data.source === "snapshot" && data.snapshotAt
+          <span>
+            {data.source === "snapshot" && data.snapshotAt
                 ? `Holdings synced ${longDate(data.snapshotAt.slice(0, 10))} ${timeIst(data.snapshotAt)} IST · valued at NSE close${m?.asOf ? ` ${longDate(m.asOf)}` : ""}`
                 : `Prices as of ${timeIst(data.asOf)} IST${m?.asOf ? ` · NSE close ${longDate(m.asOf)}` : ""}`}
           </span>
@@ -51,7 +50,10 @@ export default function Today() {
 
       <div className="today-grid">
         <section className="card hero" aria-label="Portfolio value">
-          <span className="hero-label">Portfolio value</span>
+          <div className="hero-top">
+            <span className="hero-label">Portfolio value</span>
+            <LiveTimer updatedAt={dataUpdatedAt} fetching={isFetching} value={s.total.current} source={data.source} onRefresh={() => void refetch()} />
+          </div>
           <span className="hero-value"><AnimatedNumber value={s.total.current} format={money} /></span>
           <div className="hero-sub">
             <span>Today <Change value={s.equity.dayChange} format={money} pct={percent(s.equity.dayChangePct)} /></span>
