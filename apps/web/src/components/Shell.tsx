@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { api, ApiError } from "@/lib/api";
 import { IconMarkets, IconPlan, IconPortfolio, IconSignOut, IconToday, IconWatch } from "./Icons";
 import { CommandPalette } from "./CommandPalette";
@@ -55,6 +55,39 @@ function BottomBar({ pathname }: { pathname: string }) {
   );
 }
 
+/**
+ * Closes a <details> menu the way people expect a popover to close: on a click or
+ * tap anywhere outside it, on Escape (returning focus to its toggle), and when the
+ * page changes. Native <details> only closes when its own summary is clicked.
+ */
+function useDismissable(ref: RefObject<HTMLDetailsElement | null>, pathname: string) {
+  useEffect(() => {
+    const close = () => ref.current?.removeAttribute("open");
+    const onPointer = (e: PointerEvent) => {
+      const el = ref.current;
+      if (el?.open && !el.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      const el = ref.current;
+      if (e.key === "Escape" && el?.open) {
+        close();
+        el.querySelector("summary")?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [ref]);
+
+  // Navigating away (including from a menu item) closes it too.
+  useEffect(() => {
+    ref.current?.removeAttribute("open");
+  }, [ref, pathname]);
+}
+
 export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
@@ -79,6 +112,9 @@ export function Shell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (unauthenticated) router.replace("/login");
   }, [unauthenticated, router]);
+
+  const account = useRef<HTMLDetailsElement>(null);
+  useDismissable(account, pathname);
 
   if (onLogin) return <main className="shell">{children}</main>;
 
@@ -105,7 +141,7 @@ export function Shell({ children }: { children: ReactNode }) {
             {me.data?.mode === "demo" && <span className="badge">Demo</span>}
             <ThemeToggle />
             {me.data?.mode === "kite" && (
-              <details className="who menu">
+              <details className="who menu" ref={account}>
                 <summary aria-label="Account">
                   <span className="name">{me.data.user?.name}</span>
                   <span className="initial" aria-hidden>{me.data.user?.name?.[0] ?? "·"}</span>
