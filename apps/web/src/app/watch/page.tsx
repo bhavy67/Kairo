@@ -16,6 +16,7 @@ export default function Watchlist() {
   const readOnly = useReadOnly();
   const q = useQuery({ queryKey: ["watchlist"], queryFn: api.watchlist });
   const [symbol, setSymbol] = useState("");
+  const [pasting, setPasting] = useState(false);
   const invalidate = () => qc.invalidateQueries({ queryKey: ["watchlist"] });
   const add = useMutation({
     mutationFn: api.addWatch,
@@ -51,7 +52,11 @@ export default function Watchlist() {
         <input id="sym" className="input" placeholder="NSE symbol, e.g. TCS" value={symbol} onChange={(e) => setSymbol(e.target.value)} autoComplete="off" spellCheck={false} />
         <button className="btn btn-primary" disabled={add.isPending}>Add</button>
         {add.error && <span className="loss" role="alert">{add.error instanceof ApiError ? add.error.message : "Could not add."}</span>}
+        <button type="button" className="btn-quiet" aria-expanded={pasting} onClick={() => setPasting((v) => !v)}>
+          {pasting ? "Close" : "Paste a list"}
+        </button>
       </form>}
+      {!readOnly && pasting && <PasteList onDone={invalidate} />}
       {q.isPending ? <Loading /> : q.error ? <ErrorCard error={q.error} onRetry={() => void q.refetch()} /> : (
         <section className="card">
           {q.data.items.length === 0 ? <p className="empty">Nothing on the watchlist yet.</p> : (
@@ -60,5 +65,52 @@ export default function Watchlist() {
         </section>
       )}
     </div>
+  );
+}
+
+/** Many symbols at once: copied from Kite's marketwatch, a spreadsheet column, or typed. */
+function PasteList({ onDone }: { onDone: () => void }) {
+  const [text, setText] = useState("");
+  const bulk = useMutation({
+    mutationFn: api.addWatchBulk,
+    onSuccess: (r) => {
+      if (r.added.length) setText("");
+      onDone();
+    },
+  });
+  const r = bulk.data;
+  return (
+    <form
+      className="card stack"
+      style={{ gap: 12 }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (text.trim()) bulk.mutate(text);
+      }}
+    >
+      <label htmlFor="paste" className="h3">Paste symbols</label>
+      <textarea
+        id="paste"
+        className="textarea"
+        rows={4}
+        placeholder={"INFY, TCS, HDFCBANK\nor one per line. NSE:INFY and INFY-EQ work too."}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        spellCheck={false}
+      />
+      <div className="row">
+        <button className="btn btn-primary" disabled={bulk.isPending || !text.trim()}>Add all</button>
+        <span className="sub">Up to 100 at a time. Kite’s API does not expose your Kite watchlists, so copy the symbols across.</span>
+      </div>
+      {r && (
+        <p className="sub" role="status" style={{ margin: 0 }}>
+          {r.added.length > 0 && <span className="gain">Added {r.added.join(", ")}. </span>}
+          {r.already.length > 0 && <span>Already on the list: {r.already.join(", ")}. </span>}
+          {r.unknown.length > 0 && <span className="loss">Not found on NSE today: {r.unknown.join(", ")}. </span>}
+          {r.truncated && <span>Only the first 100 were checked.</span>}
+        </p>
+      )}
+      {bulk.error && <p className="loss" role="alert" style={{ margin: 0 }}>{bulk.error instanceof ApiError ? bulk.error.message : "Could not add."}</p>}
+    </form>
   );
 }

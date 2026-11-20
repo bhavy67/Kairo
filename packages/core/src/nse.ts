@@ -39,8 +39,11 @@ export interface Instrument {
   industry: string;
 }
 
-/** Equity series worth tracking: regular (EQ) and trade-for-trade (BE). */
-const SERIES = new Set(["EQ", "BE"]);
+/**
+ * Series worth tracking: regular equity (EQ, which includes ETFs), trade-for-trade
+ * (BE), and Sovereign Gold Bonds (GB: one unit is one gram of gold).
+ */
+const SERIES = new Set(["EQ", "BE", "GB"]);
 
 const num = (s: string | undefined): number | null => {
   if (s === undefined) return null;

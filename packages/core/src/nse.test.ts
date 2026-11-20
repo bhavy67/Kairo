@@ -7,10 +7,17 @@ const BHAV = `TradDt,BizDt,Sgmt,Src,FinInstrmTp,FinInstrmId,ISIN,TckrSymb,SctySr
 `;
 
 describe("parseBhavcopy", () => {
-  it("keeps equity series only and maps prices", () => {
-    expect(parseBhavcopy(BHAV)).toEqual([
-      { symbol: "INFY", isin: "INE009A01021", date: "2026-11-18", open: 1600, high: 1610.5, low: 1580, close: 1588.6, prevClose: 1602.3, volume: 5234567, turnover: 8312345678.9 },
-    ]);
+  it("keeps equity and gold-bond series and maps prices", () => {
+    const bars = parseBhavcopy(BHAV);
+    expect(bars[0]).toEqual({ symbol: "INFY", isin: "INE009A01021", date: "2026-11-18", open: 1600, high: 1610.5, low: 1580, close: 1588.6, prevClose: 1602.3, volume: 5234567, turnover: 8312345678.9 });
+    // Sovereign Gold Bonds (series GB): one unit is one gram of gold.
+    expect(bars[1]).toMatchObject({ symbol: "SGBJUN28", close: 13205.17 });
+    expect(bars).toHaveLength(2);
+  });
+
+  it("skips series Kairo does not track", () => {
+    const debt = BHAV.replace(",SGBJUN28,GB,", ",GS2030,GS,");
+    expect(parseBhavcopy(debt).map((b) => b.symbol)).toEqual(["INFY"]);
   });
 });
 

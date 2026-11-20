@@ -90,6 +90,12 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ symbol }),
     }),
+  addWatchBulk: (text: string) =>
+    getJson<{ added: string[]; already: string[]; unknown: string[]; truncated: boolean }>("/api/watchlist/bulk", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+    }),
   removeWatch: (symbol: string) => getJson<void>(`/api/watchlist/${encodeURIComponent(symbol)}`, { method: "DELETE" }),
   today: () => getJson<{ asOf: string | null; presets: PresetResult[] }>("/api/screens/today"),
   runScreen: (rule: ScreenRule) => send<{ asOf: string | null; rows: ScreenRow[] }>("/api/screens/run", "POST", rule),

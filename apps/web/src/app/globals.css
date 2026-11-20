@@ -440,3 +440,8 @@ th button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; bo
 }
 .menu .initial { display: none; font-weight: 600; font-size: 13px; }
 @media (max-width: 760px) { .menu .initial { display: inline; } .menu > summary { padding: 6px 10px; } }
+.textarea {
+  width: 100%; min-height: 96px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface);
+  color: var(--ink); font: 400 14px/1.5 var(--mono); resize: vertical;
+}
+.textarea:focus { outline: none; border-color: var(--ink); }

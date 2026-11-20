@@ -18,7 +18,7 @@ Hosting: Vercel (Mumbai) + Supabase. See [deploy.md](deploy.md).
 - [x] Breadth: advances/declines, % of Nifty 500 above 50/200-day average, 52-week highs/lows
 - [x] Sector heatmap, top gainers/losers, volume spikes
 - [x] Sector allocation of holdings
-- [x] Watchlist
+- [x] Watchlist, with paste-a-list import (Kite's API does not expose Kite watchlists)
 - [x] Corporate-action adjustment for price history (Phase 4)
 - [ ] Breadth history chart (A/D line, % above 200-day over time)
 - [ ] Intraday quotes once on the Kite data plan
@@ -27,7 +27,8 @@ Hosting: Vercel (Mumbai) + Supabase. See [deploy.md](deploy.md).
 - [x] S&P 500, Nasdaq, Dow, Nikkei 225, US 10-year yield, Brent (FRED, keyless)
 - [x] Rupee against USD, EUR, GBP, JPY (ECB reference rates via Frankfurter)
 - [x] Overnight-cues sentence on Global and Today; morning refresh before the Indian open
-- [ ] FTSE, DAX, Hang Seng (licensed: need a keyed provider)
+- [x] Gold and silver: ETF closes (GOLDBEES, SILVERBEES) and gold per gram from the most traded Sovereign Gold Bond
+- [ ] FTSE, DAX, Hang Seng, Sensex (licensed: Kite Connect data plan or another keyed provider)
 
 ## Phase 4: Signals and screeners (done)
 - [x] Daily indicators: 20/50/200-day averages, RSI 14, 1W/1M/3M returns, volume ratio, 52-week range, crossovers

@@ -80,7 +80,21 @@ describe("global series", () => {
     expect(sp.change).toBeCloseTo(-0.01);
     expect(body.quotes.find((q: { id: string }) => q.id === "us10y").change).toBeCloseTo(-0.042);
     expect(body.cues).toMatch(/^US stocks fell: S&P 500 -1\.0%, Nasdaq -1\.0%\. Nikkei -1\.0%\. Brent \$71\.3 \(-1\.0%\)\. ₹93\.28 per dollar, rupee stronger\.$/);
-    expect(body.unavailable).toEqual(["FTSE 100", "DAX", "Hang Seng"]);
+    expect(body.unavailable).toEqual(["FTSE 100", "DAX", "Hang Seng", "Sensex"]);
+    expect(body.quotes.some((q: { group: string }) => q.group === "Gold & silver")).toBe(false); // no NSE data yet
+
+    // Gold and silver come from NSE closes already stored: ETFs with history, gold bonds as ₹ per gram.
+    await db.query(
+      `insert into daily_bars (symbol, date, isin, open, high, low, close, prev_close, volume, turnover) values
+       ('GOLDBEES', current_date - 1, 'INF204KB17I5', 100, 100, 100, 100, 99, 1000, 1e5),
+       ('GOLDBEES', current_date, 'INF204KB17I5', 101, 101, 101, 101, 100, 1000, 1e5),
+       ('SGBJUN28', current_date, 'IN0020200104', 13200, 13200, 13200, 13205, 13599, 10, 1e5),
+       ('SGBNOV30', current_date, 'IN0020230010', 13000, 13000, 13000, 13010, 13000, 1, 1e3)`,
+    );
+    const metals = (await app.inject("/api/global")).json().quotes.filter((q: { group: string }) => q.group === "Gold & silver");
+    expect(metals.map((q: { id: string }) => q.id)).toEqual(["goldbees", "sgb"]);
+    expect(metals[0].change).toBeCloseTo(0.01);
+    expect(metals[1]).toMatchObject({ label: "Gold per gram · SGBJUN28", value: 13205 }); // most traded series
     await app.close();
   });
 });

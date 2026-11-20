@@ -8,7 +8,7 @@ import { ErrorCard, Loading } from "@/components/States";
 import { api } from "@/lib/api";
 import { level, longDate, percent } from "@/lib/format";
 
-const GROUPS: GlobalQuote["group"][] = ["United States", "Asia", "Rates & commodities", "Rupee"];
+const GROUPS: GlobalQuote["group"][] = ["United States", "Asia", "Gold & silver", "Rates & commodities", "Rupee"];
 
 function value(q: GlobalQuote): string {
   if (q.kind === "yield") return `${q.value.toFixed(2)}%`;
@@ -68,7 +68,13 @@ export default function Global() {
                   <div className="tile-label">{x.label}</div>
                   <div className="tile-value">{value(x)}</div>
                   <div className="tile-delta"><ChangeCell q={x} /></div>
-                  <div style={{ marginTop: 10 }}><Sparkline values={x.history.map((h) => h.value)} /></div>
+                  <div style={{ marginTop: 10 }}>
+                    {x.history.length > 1 ? (
+                      <Sparkline values={x.history.map((h) => h.value)} />
+                    ) : (
+                      <span className="sub">Gold bonds trade near the price of 1 g of 24k gold, at a small premium or discount.</span>
+                    )}
+                  </div>
                   <div className="sub" style={{ marginTop: 6 }}>{longDate(x.date)}</div>
                 </div>
               ))}

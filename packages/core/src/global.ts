@@ -9,15 +9,15 @@ import { parseCsvRecords } from "./csv.js";
  */
 
 export type GlobalKind = "index" | "yield" | "commodity" | "fx";
-export type GlobalGroup = "United States" | "Asia" | "Rates & commodities" | "Rupee";
+export type GlobalGroup = "United States" | "Asia" | "Gold & silver" | "Rates & commodities" | "Rupee";
 
 export interface GlobalSeries {
   id: string;
   label: string;
   group: GlobalGroup;
   kind: GlobalKind;
-  source: "fred" | "ecb";
-  /** FRED series id, or the currency code for ECB rates against INR. */
+  source: "fred" | "ecb" | "nse";
+  /** FRED series id, the currency code for ECB rates against INR, or an NSE symbol. */
   code: string;
   unit: "" | "%" | "$" | "₹";
 }
@@ -35,7 +35,16 @@ export const GLOBAL_SERIES: GlobalSeries[] = [
   { id: "jpyinr", label: "JPY / INR (per 100)", group: "Rupee", kind: "fx", source: "ecb", code: "JPY", unit: "₹" },
 ];
 
-export const UNAVAILABLE = ["FTSE 100", "DAX", "Hang Seng"];
+export const UNAVAILABLE = ["FTSE 100", "DAX", "Hang Seng", "Sensex"];
+
+/**
+ * Gold and silver as an Indian investor holds them: the most-traded NSE ETFs.
+ * Their prices come from the daily NSE file Kairo already imports.
+ */
+export const METAL_ETFS = [
+  { id: "goldbees", symbol: "GOLDBEES", label: "Gold ETF · GOLDBEES" },
+  { id: "silverbees", symbol: "SILVERBEES", label: "Silver ETF · SILVERBEES" },
+] as const;
 
 export interface Point {
   date: string;

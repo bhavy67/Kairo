@@ -148,6 +148,12 @@ describe("backfill and overview", () => {
     const wl = (await app.inject("/api/watchlist")).json();
     expect(wl.items[0]).toMatchObject({ symbol: "UP", name: "Up Ltd.", close: 359 });
     expect((await app.inject({ method: "DELETE", url: "/api/watchlist/UP" })).statusCode).toBe(204);
+
+    // Bulk paste: Kite-style prefixes, duplicates and junk in one go.
+    const bulk = await app.inject({ method: "POST", url: "/api/watchlist/bulk", payload: { text: "NSE:UP, down-eq\nNOPE up ₹99" } });
+    expect(bulk.json()).toEqual({ added: ["UP", "DOWN"], already: [], unknown: ["NOPE", "₹99"], truncated: false });
+    const again = await app.inject({ method: "POST", url: "/api/watchlist/bulk", payload: { text: "UP" } });
+    expect(again.json()).toMatchObject({ added: [], already: ["UP"] });
     await app.close();
   }, 30_000);
 
