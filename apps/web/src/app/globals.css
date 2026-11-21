@@ -201,11 +201,27 @@ main { min-width: 0; }
 input[type="file"] { font: inherit; color: var(--ink-2); max-width: 100%; }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--ink); width: 16px; height: 16px; margin: 0; }
 
-/* Theme switch: three-way segmented control. */
-.theme { display: inline-flex; padding: 2px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
-.theme button { display: grid; place-items: center; width: 28px; height: 26px; border: 0; border-radius: 999px; background: none; color: var(--ink-4); cursor: pointer; transition: color var(--dur), background var(--dur); }
-.theme button:hover { color: var(--ink); }
-.theme button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+/* Theme switch: one button. It shows the theme you would switch to (moon in light,
+   sun in dark), decided in CSS so the right icon is there before hydration. */
+.theme-btn {
+  position: relative; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; flex-shrink: 0;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-3); cursor: pointer;
+  transition: color var(--dur), border-color var(--dur);
+}
+.theme-btn:hover { color: var(--ink); border-color: var(--line-strong); }
+.theme-btn:active { transform: scale(0.94); }
+.theme-btn > span { grid-area: 1 / 1; display: grid; transition: transform 360ms var(--ease), opacity 220ms var(--ease); }
+.theme-btn .ic-sun { opacity: 0; transform: rotate(-90deg) scale(0.6); }
+:root[data-theme="dark"] .theme-btn .ic-sun { opacity: 1; transform: none; }
+:root[data-theme="dark"] .theme-btn .ic-moon { opacity: 0; transform: rotate(90deg) scale(0.6); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-btn .ic-sun { opacity: 1; transform: none; }
+  :root:not([data-theme="light"]) .theme-btn .ic-moon { opacity: 0; transform: rotate(90deg) scale(0.6); }
+}
+/* Page crossfade while switching, so colours change together instead of popping. */
+.theme-switching, .theme-switching *, .theme-switching *::before, .theme-switching *::after {
+  transition: background-color 300ms var(--ease), color 300ms var(--ease), border-color 300ms var(--ease), fill 300ms var(--ease), stroke 300ms var(--ease) !important;
+}
 
 /* ------------------------------------------------------------------ cards */
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; }
@@ -530,3 +546,9 @@ th button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; bo
 .menu-panel .name-edit .btn { justify-content: center; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); }
 .menu-panel .name-edit .btn-primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .menu-panel .name-edit .btn-primary:hover { background: var(--ink); opacity: 0.9; }
+/* Phones: pin the account menu to the screen edges so it can never spill off the
+   left side (it grows when the name editor is open). 54px = mobile top bar. */
+@media (max-width: 760px) {
+  .menu-panel { position: fixed; top: calc(54px + 8px); right: 16px; left: auto; width: min(320px, calc(100vw - 32px)); min-width: 0; }
+}
+.name-edit .sub { overflow-wrap: anywhere; }
