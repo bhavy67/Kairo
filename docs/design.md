@@ -16,7 +16,7 @@ Kairo is opened once a day, after the close, for about two minutes. Every screen
 | Ink | `#0e0e0e` | `#f0efec` |
 | Gain / loss (text) | `#0f7a3d` / `#b42318` | `#4cc27a` / `#f0705f` |
 
-Dark mode is designed, not inverted. The theme is System / Light / Dark, stored per device and applied before first paint.
+Dark mode is designed, not inverted. The app follows the device theme; one toggle flips light and dark, and a flip that matches the device drops the override. The choice is stored per device and applied before first paint, along with the phone status-bar colour.
 
 ## Type
 - Inter (variable, optical sizes) for text; the hero uses the display cut at −0.045em.

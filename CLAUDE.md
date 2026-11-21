@@ -5,3 +5,4 @@
 - Work on `main` unless a branch is genuinely needed.
 - Secrets never enter the repo or the browser. Kite credentials live in `.env` on the server only.
 - Read `docs/architecture.md` before structural changes; record significant decisions in `docs/adr/`.
+- Every UI change is checked on phones as well as desktop: at least 320px and 390px wide, light and dark, with no horizontal scroll, before it ships.
