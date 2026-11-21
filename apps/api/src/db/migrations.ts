@@ -319,6 +319,20 @@ const MIGRATIONS: { id: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: 12,
+    name: "user preferences",
+    sql: `
+      -- Per-user settings that outlive sessions, starting with the display name:
+      -- brokers give only the legal name, and which word is the first name cannot
+      -- be inferred. Personal: not granted to the demo role.
+      create table user_prefs (
+        user_id      text primary key,
+        display_name text,
+        updated_at   timestamptz not null default now()
+      );
+    `,
+  },
 ];
 
 export async function migrate(db: Db): Promise<number[]> {

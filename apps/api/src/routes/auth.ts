@@ -3,9 +3,19 @@ import type { FastifyPluginAsync } from "fastify";
 import { displayName } from "@kairo/core";
 import { z } from "zod";
 import { SESSION_COOKIE, setSessionCookie, type AppContext } from "../app.js";
+import { AppError } from "../errors.js";
 import { loginUrl } from "../kite/client.js";
 
 const STATE_COOKIE = "kairo_oauth_state";
+
+/** A display name: letters, spaces and . ' - only, so it stays a name. Empty resets to the legal name. */
+const NameBody = z.object({
+  name: z
+    .string()
+    .trim()
+    .max(40, "Keep the name under 40 characters.")
+    .regex(/^[\p{L}\p{M} .'-]*$/u, "Use letters, spaces, dots, hyphens or apostrophes."),
+});
 
 const Callback = z.object({
   status: z.string(),
@@ -73,15 +83,30 @@ export const authRoutes =
       if (!kite) return { authenticated: true, mode: "demo", readOnly: ctx.publicDemo, user: { id: "DEMO", name: "Demo Investor" }, kite: null };
       if (!req.session) return reply.status(401).send({ authenticated: false, mode: "kite" });
       const s = req.session;
+      const [pref] = await ctx.db.query<{ display_name: string | null }>("select display_name from user_prefs where user_id = $1", [s.userId]);
       return {
         authenticated: true,
         mode: "kite",
         readOnly: false,
-        // Legal name as Kite gives it, shortened for display (first name + surname).
-        user: { id: s.userId, name: displayName(s.userName, s.userShort) },
+        // The name the user chose; otherwise the full legal name (see displayName).
+        user: { id: s.userId, name: displayName(s.userName, pref?.display_name), legalName: displayName(s.userName) },
         expiresAt: new Date(s.expiresAt).toISOString(),
         kite: { connected: s.kiteToken !== null, expiresAt: s.kiteExpiresAt ? new Date(s.kiteExpiresAt).toISOString() : null },
       };
+    });
+
+    /** Set the name shown in the app. It belongs to the user, so it survives sign-outs and Kite reconnects. */
+    app.put("/name", async (req) => {
+      if (!kite || !req.session) throw new AppError(401, "unauthenticated", "Sign in with Kite to continue.");
+      const body = NameBody.safeParse(req.body);
+      if (!body.success) throw new AppError(400, "bad_request", body.error.issues[0]?.message ?? "Invalid name.");
+      const chosen = body.data.name.replace(/\s+/g, " ") || null;
+      await ctx.db.query(
+        `insert into user_prefs (user_id, display_name, updated_at) values ($1, $2, now())
+         on conflict (user_id) do update set display_name = excluded.display_name, updated_at = now()`,
+        [req.session.userId, chosen],
+      );
+      return { name: displayName(req.session.userName, chosen) };
     });
 
     app.post("/logout", async (req, reply) => {

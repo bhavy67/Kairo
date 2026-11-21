@@ -1,23 +1,17 @@
 /**
- * Display name from a broker's legal name, without the father's name.
+ * The name shown in the app.
  *
- * Legal names come in more than one order: "BHAVY RAJESHBHAI LADANI" (first,
- * father's, surname) and "LADANI BHAVY RAJESHBHAI" (surname first, common in
- * Gujarat and in government records). Word position alone cannot tell them
- * apart, so the broker's short name (the first name) is the anchor:
- * - surname-first: the surname is the word before the first name;
- * - first-name-first: the surname is the last word.
- * Without a short name that matches a word, the full name is shown unchanged:
- * a long name is better than a wrong one.
+ * Brokers give the legal name, and legal names come in more than one order:
+ * "BHAVY RAJESHBHAI LADANI" (first, father's, surname) or "LADANI BHAVY
+ * RAJESHBHAI" (surname first). Nothing the broker sends says which word is the
+ * first name: Kite's "short name" is sometimes the first name and sometimes the
+ * surname. So Kairo does not guess. The name the user chose wins; without one,
+ * the full legal name is shown, title-cased. A long name is better than a wrong one.
  */
-export function displayName(legal: string, short?: string | null): string {
-  const words = legal.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return titleCase(short ?? "");
-  const first = (short ?? "").trim().split(/\s+/)[0]?.toUpperCase() ?? "";
-  const at = first ? words.findIndex((w) => w.toUpperCase() === first) : -1;
-  if (at === -1 || words.length < 3) return words.map(titleCase).join(" ");
-  const surname = at > 0 ? words[at - 1]! : words.at(-1)!;
-  return `${titleCase(words[at]!)} ${titleCase(surname)}`;
+export function displayName(legal: string, chosen?: string | null): string {
+  const pick = chosen?.trim().replace(/\s+/g, " ");
+  if (pick) return pick;
+  return legal.trim().split(/\s+/).filter(Boolean).map(titleCase).join(" ");
 }
 
 function titleCase(w: string): string {

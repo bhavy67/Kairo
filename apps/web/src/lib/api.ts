@@ -74,7 +74,8 @@ export interface Me {
   readOnly: boolean;
   /** Broker link, separate from the Kairo session: Zerodha expires it daily. Null in demo mode. */
   kite?: { connected: boolean; expiresAt: string | null } | null;
-  user?: { id: string; name: string };
+  /** name: what the app shows (the user's choice, else the legal name); legalName: as the broker has it. */
+  user?: { id: string; name: string; legalName?: string };
   expiresAt?: string;
 }
 
@@ -125,6 +126,12 @@ export const api = {
       body: JSON.stringify({ plan, updatedAt }),
     }),
   global: () => getJson<{ quotes: GlobalQuote[]; cues: string | null; unavailable: string[]; sources: string }>("/api/global"),
+  setName: (name: string) =>
+    getJson<{ name: string }>("/api/auth/name", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
   logout: () => fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }),
   logoutAll: () => fetch("/api/auth/logout-all", { method: "POST", credentials: "same-origin" }),
 };

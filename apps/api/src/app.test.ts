@@ -24,7 +24,7 @@ function fakeKite(overrides: Record<string, Route> = {}) {
   const routes: Record<string, Route> = {
     "POST /session/token": () => ok({ user_id: "AB1234", access_token: "tok" }),
     "DELETE /session/token": () => ok(true),
-    "GET /user/profile": () => ok({ user_id: "AB1234", user_name: "LADANI BHAVY RAJESHBHAI", user_shortname: "Bhavy", broker: "ZERODHA" }),
+    "GET /user/profile": () => ok({ user_id: "AB1234", user_name: "LADANI BHAVY RAJESHBHAI", user_shortname: "Ladani", broker: "ZERODHA" }),
     "GET /user/margins": () => ok({ equity: { net: 1000, utilised: { debits: 0 } } }),
     "GET /portfolio/holdings": () =>
       ok([{ tradingsymbol: "INFY", exchange: "NSE", isin: "INE009A01021", quantity: 2, t1_quantity: 1, average_price: 100, last_price: 120, close_price: 110, extra_field: 1 }]),
@@ -103,9 +103,28 @@ describe("kite auth flow", () => {
     expect(body.holdings[0].quantity).toBe(3); // quantity + t1_quantity
     expect(body.summary.equity.current).toBe(360);
     expect(calls.find((c) => c.path === "/portfolio/holdings")?.auth).toBe("token key:tok");
-    // The legal name is shortened for display: no father's name in the UI.
+    // No guessing at which word is the first name (Kite's short name here is the surname).
     const me = (await app.inject({ url: "/api/auth/me", cookies: { kairo_sid: sid! } })).json();
-    expect(me.user.name).toBe("Bhavy Ladani");
+    expect(me.user.name).toBe("Ladani Bhavy Rajeshbhai");
+  });
+
+  it("lets the user choose the name shown, and keeps it across sessions", async () => {
+    const { fetchImpl } = fakeKite();
+    app = await buildApp({ db: await testDb(), config: loadConfig(KITE_ENV), fetch: fetchImpl, logger: false });
+    expect((await app.inject({ method: "PUT", url: "/api/auth/name", payload: { name: "X" } })).statusCode).toBe(401);
+    const sid = (await signIn(fetchImpl)).sid!;
+    const put = (name: string) => app.inject({ method: "PUT", url: "/api/auth/name", cookies: { kairo_sid: sid }, payload: { name } });
+    expect((await put("<script>")).statusCode).toBe(400);
+    expect((await put("x".repeat(41))).statusCode).toBe(400);
+    expect((await put("  Bhavy   Ladani ")).json()).toEqual({ name: "Bhavy Ladani" });
+
+    // A fresh sign-in (new session, Kite profile re-read) keeps the chosen name.
+    const again = (await signIn(fetchImpl)).sid!;
+    const me = (await app.inject({ url: "/api/auth/me", cookies: { kairo_sid: again } })).json();
+    expect(me.user).toMatchObject({ name: "Bhavy Ladani", legalName: "Ladani Bhavy Rajeshbhai" });
+
+    // Clearing it goes back to the full legal name.
+    expect((await put("")).json()).toEqual({ name: "Ladani Bhavy Rajeshbhai" });
   });
 
   it("rejects requests without a session", async () => {

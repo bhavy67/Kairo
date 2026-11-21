@@ -1,24 +1,19 @@
 import { expect, it } from "vitest";
 import { displayName } from "./names.js";
 
-it("handles surname-first legal names using the short name as the anchor", () => {
-  // The real case that broke a word-position rule: surname, first name, father's name.
-  expect(displayName("LADANI BHAVY RAJESHBHAI", "Bhavy")).toBe("Bhavy Ladani");
+it("uses the name the user chose, exactly as typed", () => {
+  expect(displayName("LADANI BHAVY RAJESHBHAI", "Bhavy Ladani")).toBe("Bhavy Ladani");
+  expect(displayName("LADANI BHAVY RAJESHBHAI", "  Bhavy   Ladani ")).toBe("Bhavy Ladani");
 });
 
-it("handles first-name-first legal names", () => {
-  expect(displayName("BHAVY RAJESHBHAI LADANI", "BHAVY")).toBe("Bhavy Ladani");
-  expect(displayName("ANIL KUMAR SINGH CHAUHAN", "Anil")).toBe("Anil Chauhan");
-});
-
-it("never drops words without an anchor: shows the full name instead", () => {
+it("never guesses which word is the first name: shows the full legal name", () => {
+  // Kite's short name for this account is the surname, which broke a guessing rule twice.
   expect(displayName("LADANI BHAVY RAJESHBHAI")).toBe("Ladani Bhavy Rajeshbhai");
-  expect(displayName("LADANI BHAVY RAJESHBHAI", "Bob")).toBe("Ladani Bhavy Rajeshbhai");
+  expect(displayName("LADANI BHAVY RAJESHBHAI", "")).toBe("Ladani Bhavy Rajeshbhai");
+  expect(displayName("LADANI BHAVY RAJESHBHAI", null)).toBe("Ladani Bhavy Rajeshbhai");
 });
 
-it("re-cases short names and keeps hyphens and apostrophes", () => {
-  expect(displayName("MEERA IYER", "Meera")).toBe("Meera Iyer");
-  expect(displayName("RAVI")).toBe("Ravi");
+it("re-cases names and keeps hyphens and apostrophes", () => {
+  expect(displayName("MEERA IYER")).toBe("Meera Iyer");
   expect(displayName("JEAN-PAUL D'SOUZA")).toBe("Jean-Paul D'Souza");
-  expect(displayName("", "Ravi")).toBe("Ravi");
 });

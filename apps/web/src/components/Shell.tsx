@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, type Me } from "@/lib/api";
 import { IconMarkets, IconPlan, IconPortfolio, IconSignOut, IconToday, IconWatch } from "./Icons";
 import { CommandPalette } from "./CommandPalette";
 import { Logo } from "./Logo";
@@ -88,6 +88,67 @@ function useDismissable(ref: RefObject<HTMLDetailsElement | null>, pathname: str
   }, [ref, pathname]);
 }
 
+/** "Change name" in the account menu: the broker's legal name cannot say which word is the first name. */
+function NameEditor({ name, legalName }: { name: string; legalName: string }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(name);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function save(next: string) {
+    setSaving(true);
+    setError(null);
+    try {
+      const { name: shown } = await api.setName(next);
+      qc.setQueryData<Me>(["me"], (m) => (m?.user ? { ...m, user: { ...m.user, name: shown } } : m));
+      setEditing(false);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not save the name.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <button role="menuitem" type="button" onClick={() => { setValue(name); setEditing(true); }}>
+        Change name
+      </button>
+    );
+  }
+  return (
+    <form
+      className="name-edit"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save(value);
+      }}
+    >
+      <label className="label" htmlFor="display-name">Name shown in Kairo</label>
+      <input
+        id="display-name"
+        className="input plain"
+        value={value}
+        maxLength={40}
+        autoFocus
+        autoComplete="name"
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          // Escape cancels the edit instead of closing the whole menu.
+          if (e.key === "Escape") { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); setEditing(false); }
+        }}
+      />
+      {legalName && legalName !== value.trim() && <span className="sub">On your Kite account: {legalName}</span>}
+      {error && <span className="sub loss" role="alert">{error}</span>}
+      <div className="row" style={{ gap: 8 }}>
+        <button type="submit" className="btn btn-primary" disabled={saving || !value.trim()}>Save</button>
+        <button type="button" className="btn" onClick={() => setEditing(false)}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
 export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
@@ -151,6 +212,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   <p className="sub" style={{ margin: "0 0 6px" }}>
                     {me.data.kite?.connected ? "Kite connected until 6 AM" : "Kite disconnected"}
                   </p>
+                  <NameEditor name={me.data.user?.name ?? ""} legalName={me.data.user?.legalName ?? ""} />
                   <a role="menuitem" href="/api/auth/login">{me.data.kite?.connected ? "Refresh Kite connection" : "Reconnect Kite"}</a>
                   <button role="menuitem" type="button" onClick={() => logout(false)}>
                     <IconSignOut /> Sign out
